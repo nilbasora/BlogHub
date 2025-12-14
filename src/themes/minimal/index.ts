@@ -1,0 +1,1 @@
+export { minimalTheme } from "./theme"

@@ -16,6 +16,7 @@ const ROOT = process.cwd()
 const CONTENT_DIR = path.join(ROOT, "content")
 const POSTS_DIR = path.join(CONTENT_DIR, "posts")
 const GENERATED_DIR = path.join(CONTENT_DIR, "generated")
+const GENERATED_POSTS_DIR = path.join(GENERATED_DIR, "posts")
 
 function readJson<T>(filePath: string): T {
   return JSON.parse(fs.readFileSync(filePath, "utf8"))
@@ -23,6 +24,11 @@ function readJson<T>(filePath: string): T {
 
 function ensureDir(dir: string) {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
+}
+
+function ensureCleanDir(dir: string) {
+  fs.rmSync(dir, { recursive: true, force: true })
+  fs.mkdirSync(dir, { recursive: true })
 }
 
 function main() {
@@ -46,12 +52,17 @@ function main() {
     routes: {},
   }
 
+  ensureDir(GENERATED_DIR)
+  ensureCleanDir(GENERATED_POSTS_DIR)
+
   for (const file of postFiles) {
     const fullPath = path.join(POSTS_DIR, file)
     const raw = fs.readFileSync(fullPath, "utf8")
-    const { data } = matter(raw)
 
-    const post = data as PostFrontmatter
+    // Parse frontmatter in Node (build-time), not in browser
+    const parsed = matter(raw)
+    const post = parsed.data as PostFrontmatter
+
     if (!post.id || !post.slug || !post.date) {
       console.warn(`⚠️ Skipping invalid post: ${file}`)
       continue
@@ -59,7 +70,18 @@ function main() {
 
     const url = resolvePostPermalink(post, settings)
 
-    routesManifest.routes[url] = `/content/posts/${file}`
+    // Write body-only markdown copy (no frontmatter) into content/generated/posts/
+    const safeName = file.replaceAll("/", "__") // flatten nested folders if any
+    const generatedBodyPath = `content/generated/posts/${safeName}`
+
+    fs.writeFileSync(
+      path.join(ROOT, generatedBodyPath),
+      parsed.content.trimStart(),
+      "utf8"
+    )
+
+    // Manifest points to generated body markdown (browser-friendly)
+    routesManifest.routes[url] = `/${generatedBodyPath}`
 
     postsIndex.posts.push({
       id: post.id,
@@ -79,8 +101,6 @@ function main() {
       ]),
     })
   }
-
-  ensureDir(GENERATED_DIR)
 
   fs.writeFileSync(
     path.join(GENERATED_DIR, "posts-index.json"),

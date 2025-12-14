@@ -9,7 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as PostPathRouteImport } from './routes/$postPath'
+import { Route as SplatRouteImport } from './routes/$'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as AdminThemeRouteImport } from './routes/admin/theme'
@@ -20,9 +20,9 @@ import { Route as AdminLoginRouteImport } from './routes/admin/login'
 import { Route as AdminCallbackRouteImport } from './routes/admin/callback'
 import { Route as AdminPostsPostIdRouteImport } from './routes/admin/posts.$postId'
 
-const PostPathRoute = PostPathRouteImport.update({
-  id: '/$postPath',
-  path: '/$postPath',
+const SplatRoute = SplatRouteImport.update({
+  id: '/$',
+  path: '/$',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -73,7 +73,7 @@ const AdminPostsPostIdRoute = AdminPostsPostIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/$postPath': typeof PostPathRoute
+  '/$': typeof SplatRoute
   '/admin/callback': typeof AdminCallbackRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/media': typeof AdminMediaRoute
@@ -85,7 +85,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/$postPath': typeof PostPathRoute
+  '/$': typeof SplatRoute
   '/admin/callback': typeof AdminCallbackRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/media': typeof AdminMediaRoute
@@ -98,7 +98,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/$postPath': typeof PostPathRoute
+  '/$': typeof SplatRoute
   '/admin/callback': typeof AdminCallbackRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/media': typeof AdminMediaRoute
@@ -112,7 +112,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/$postPath'
+    | '/$'
     | '/admin/callback'
     | '/admin/login'
     | '/admin/media'
@@ -124,7 +124,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/$postPath'
+    | '/$'
     | '/admin/callback'
     | '/admin/login'
     | '/admin/media'
@@ -136,7 +136,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
-    | '/$postPath'
+    | '/$'
     | '/admin/callback'
     | '/admin/login'
     | '/admin/media'
@@ -149,7 +149,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  PostPathRoute: typeof PostPathRoute
+  SplatRoute: typeof SplatRoute
   AdminCallbackRoute: typeof AdminCallbackRoute
   AdminLoginRoute: typeof AdminLoginRoute
   AdminMediaRoute: typeof AdminMediaRoute
@@ -161,11 +161,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/$postPath': {
-      id: '/$postPath'
-      path: '/$postPath'
-      fullPath: '/$postPath'
-      preLoaderRoute: typeof PostPathRouteImport
+    '/$': {
+      id: '/$'
+      path: '/$'
+      fullPath: '/$'
+      preLoaderRoute: typeof SplatRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -248,7 +248,7 @@ const AdminPostsRouteWithChildren = AdminPostsRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  PostPathRoute: PostPathRoute,
+  SplatRoute: SplatRoute,
   AdminCallbackRoute: AdminCallbackRoute,
   AdminLoginRoute: AdminLoginRoute,
   AdminMediaRoute: AdminMediaRoute,
