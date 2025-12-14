@@ -1,1 +1,1 @@
-export { cleanTheme } from "./theme"
+export { cleanTheme as theme } from "./theme"

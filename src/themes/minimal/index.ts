@@ -1,1 +1,1 @@
-export { minimalTheme } from "./theme"
+export { minimalTheme as theme } from "./theme"

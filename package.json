@@ -4,9 +4,10 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "validate:themes": "tsx scripts/validate-themes.ts",
     "generate": "tsx scripts/generate-content.ts",
-    "dev": "npm run generate && vite",
-    "build": "npm run generate && tsc -b && vite build",
+    "dev": "npm run validate:themes && npm run generate && vite",
+    "build": "npm run validate:themes && npm run generate && tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview"
   },

@@ -1,8 +1,8 @@
 import type { ThemeModule } from "./types"
-import { minimalTheme } from "@/themes/minimal"
-import { cleanTheme } from "@/themes/clean"
+import { theme as minimal } from "@/themes/minimal"
+import { theme as clean } from "@/themes/clean"
 
-const THEMES: ThemeModule[] = [minimalTheme, cleanTheme]
+const THEMES: ThemeModule[] = [minimal, clean]
 
 export function listThemes() {
   return THEMES
