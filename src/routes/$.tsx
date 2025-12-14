@@ -24,7 +24,8 @@ export const Route = createFileRoute("/$")({
     if (!post) throw notFound()
 
     const content = await loadMarkdownPost(mdPath)
-    const { theme, vars } = resolveTheme(settings)
+    const { theme, vars, warnings } = resolveTheme(settings)
+    if (import.meta.env.DEV && warnings.length) console.warn("[theme vars]", warnings)
 
     return { settings, themeId: theme.id, themeVars: vars, post, content }
   },

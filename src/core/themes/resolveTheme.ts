@@ -1,16 +1,21 @@
 import type { SiteSettings } from "@/core/content/types"
 import type { ThemeModule } from "./types"
 import { getThemeById } from "./registry"
+import { normalizeThemeVars } from "./validateVars"
 
 export function resolveTheme(settings: SiteSettings): {
   theme: ThemeModule
   vars: Record<string, unknown>
+  warnings: string[]
 } {
   const id = settings.theme?.active ?? "minimal"
   const theme = getThemeById(id) ?? getThemeById("minimal")!
 
-  // Merge defaults + stored vars (stored vars override defaults)
-  const vars = { ...theme.defaults, ...(settings.theme?.vars ?? {}) }
+  const normalized = normalizeThemeVars(theme, settings.theme?.vars)
 
-  return { theme, vars }
+  return {
+    theme,
+    vars: normalized.vars,
+    warnings: normalized.warnings,
+  }
 }
