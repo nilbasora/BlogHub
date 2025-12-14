@@ -1,0 +1,12 @@
+{
+  "siteName": "BlogHub",
+  "tagline": "Static CMS on GitHub Pages",
+  "siteUrl": "https://nilbasora.github.io/BlogHub/",
+  "permalinks": {
+    "post": "/:year/:month/:day/:slug/"
+  },
+  "theme": {
+    "active": "minimal",
+    "vars": {}
+  }
+}
