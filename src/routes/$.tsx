@@ -4,6 +4,7 @@ import { loadPostsIndex } from "@/core/content/loadPostsIndex"
 import { loadMarkdownPost } from "@/core/content/loadMarkdownPost"
 import { loadSettings } from "@/core/content/loadSettings"
 import { resolveTheme } from "@/core/themes/resolveTheme"
+import { usePreviewSettings } from "@/core/preview/PreviewSettingsProvider"
 
 export const Route = createFileRoute("/$")({
   loader: async ({ params }) => {
@@ -24,16 +25,17 @@ export const Route = createFileRoute("/$")({
     if (!post) throw notFound()
 
     const content = await loadMarkdownPost(mdPath)
-    const { theme, vars, warnings } = resolveTheme(settings)
-    if (import.meta.env.DEV && warnings.length) console.warn("[theme vars]", warnings)
-
-    return { settings, themeId: theme.id, themeVars: vars, post, content }
+    return { settings, post, content }
   },
   component: PostRoute,
 })
 
 function PostRoute() {
-  const { settings, themeVars, post, content } = Route.useLoaderData()
-  const { theme } = resolveTheme(settings)
-  return theme.render.Post({ settings, themeVars, post, content })
+  const { settings: repoSettings, post, content } = Route.useLoaderData()
+  const preview = usePreviewSettings()
+
+  const settings = preview.enabled && preview.settings ? preview.settings : repoSettings
+  const { theme, vars } = resolveTheme(settings)
+
+  return theme.render.Post({ settings, themeVars: vars, post, content })
 }

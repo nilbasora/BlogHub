@@ -1,5 +1,9 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router"
 
 export const Route = createFileRoute("/admin/")({
-  component: () => <div className="p-6">Admin (login coming soon)</div>,
-});
+  component: AdminIndex,
+})
+
+function AdminIndex() {
+  return <div className="p-6">Admin Home</div>
+}
