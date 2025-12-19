@@ -1,9 +1,28 @@
 import * as React from "react"
-import { Outlet, createFileRoute } from "@tanstack/react-router"
+import { Outlet, createFileRoute, redirect } from "@tanstack/react-router"
 import { AdminTopbar } from "@/admin/components/AdminTopbar"
 import { AdminSidebar } from "@/admin/components/AdminSidebar"
+import { getGithubToken, validateTokenForRepo } from "@/core/github/oauth"
+
+let validatedToken: string | null = null
 
 export const Route = createFileRoute("/admin")({
+  beforeLoad: async ({ location }) => {
+    const token = getGithubToken()
+    if (!token) {
+      throw redirect({ to: "/login", search: { next: location.href } })
+    }
+
+    if (validatedToken !== token) {
+      try {
+        await validateTokenForRepo(token)
+        validatedToken = token
+      } catch {
+        validatedToken = null
+        throw redirect({ to: "/login", search: { next: location.href } })
+      }
+    }
+  },
   component: AdminLayout,
 })
 
