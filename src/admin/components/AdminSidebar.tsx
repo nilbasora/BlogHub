@@ -1,5 +1,7 @@
 import { Link, useRouterState, useNavigate } from "@tanstack/react-router"
 import { clearGithubToken } from "@/core/github/oauth"
+import { getRepoRef } from "@/core/github/repo"
+import { useViewer, clearViewerCache } from "@/core/github/useViewer"
 
 export type AdminNavItem = {
   to: string
@@ -27,6 +29,15 @@ type Props = {
 export function AdminSidebar({ variant = "desktop", onNavigate }: Props) {
   const pathname = useRouterState({ select: (s) => s.location.pathname })
   const navigate = useNavigate()
+  const { user, loading } = useViewer()
+
+  const repo = (() => {
+    try {
+      return getRepoRef()
+    } catch {
+      return null
+    }
+  })()
 
   return (
     <aside
@@ -37,7 +48,41 @@ export function AdminSidebar({ variant = "desktop", onNavigate }: Props) {
           : "w-72 h-full border-r",
       ].join(" ")}
     >
-      {/* Top navigation */}
+      {/* Viewer / Repo header */}
+      <div className="p-4 border-b">
+        <div className="flex items-center gap-3">
+          <div className="h-10 w-10 rounded-full overflow-hidden bg-neutral-200 shrink-0">
+            {user?.avatar_url ? (
+              <img
+                src={user.avatar_url}
+                alt={user.login}
+                className="h-full w-full object-cover"
+                referrerPolicy="no-referrer"
+              />
+            ) : null}
+          </div>
+
+          <div className="min-w-0">
+            <div className="text-sm font-semibold truncate">
+              {loading ? "Loading…" : user?.name || user?.login || "GitHub user"}
+            </div>
+            <div className="text-xs opacity-70 truncate">
+              {user?.login ? `@${user.login}` : ""}
+            </div>
+          </div>
+        </div>
+
+        {repo ? (
+          <div className="mt-3 text-xs opacity-70">
+            Repo:{" "}
+            <span className="font-mono">
+              {repo.owner}/{repo.repo}
+            </span>
+          </div>
+        ) : null}
+      </div>
+
+      {/* Nav */}
       <nav className="p-3 space-y-1 flex-1">
         {NAV.map((item) => {
           const active = isActive(pathname, item.to)
@@ -63,6 +108,7 @@ export function AdminSidebar({ variant = "desktop", onNavigate }: Props) {
           className="w-full rounded-md px-3 py-2 text-sm text-left hover:bg-neutral-100 text-red-700"
           onClick={() => {
             clearGithubToken()
+            clearViewerCache()
             onNavigate?.()
             navigate({ to: "/login" })
           }}

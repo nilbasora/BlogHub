@@ -8,6 +8,10 @@ const TOKEN_KEY = "bloghub.githubToken"
 const VERIFIER_KEY = "bloghub.pkce.verifier"
 const STATE_KEY = "bloghub.pkce.state"
 const NEXT_KEY = "bloghub.loginNext"
+const LOGIN_ERROR_KEY = "bloghub.loginError"
+
+// DEV bypass token
+const DEV_BYPASS_TOKEN = "__DEV_BYPASS__"
 
 function randomString(len = 64) {
   const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-._~"
@@ -58,6 +62,14 @@ export function getRedirectUri() {
 }
 
 export async function startGithubLogin(next = "/admin/") {
+  // DEV: bypass OAuth completely
+  if (import.meta.env.DEV) {
+    setGithubToken(DEV_BYPASS_TOKEN)
+    localStorage.setItem(NEXT_KEY, next)
+    window.location.href = next
+    return
+  }
+
   const clientId = import.meta.env.VITE_GITHUB_CLIENT_ID
   if (!clientId) throw new Error("Missing VITE_GITHUB_CLIENT_ID")
 
@@ -125,7 +137,24 @@ export function clearLoginNext() {
   localStorage.removeItem(NEXT_KEY)
 }
 
+export function setLoginError(message: string) {
+  localStorage.setItem(LOGIN_ERROR_KEY, message)
+}
+
+export function readLoginError(): string | null {
+  return localStorage.getItem(LOGIN_ERROR_KEY)
+}
+
+export function clearLoginError() {
+  localStorage.removeItem(LOGIN_ERROR_KEY)
+}
+
 export async function validateTokenForRepo(token: string) {
+  // DEV: always valid
+  if (import.meta.env.DEV && token === DEV_BYPASS_TOKEN) {
+    return true
+  }
+
   const { owner, repo } = getRepoRef()
 
   const res = await fetch(`${API}/repos/${owner}/${repo}`, {

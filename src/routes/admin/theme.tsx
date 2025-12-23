@@ -6,6 +6,7 @@ import { normalizeThemeVars } from "@/core/themes/validateVars"
 import { ThemeVarsForm } from "@/admin/components/ThemeVarsForm"
 import { getThemeById, listThemes } from "@/core/themes/registry"
 import { writePreviewSettings, clearPreviewSettings } from "@/core/preview/previewSettings"
+import { commitThemeSettings } from "@/core/github/commit"
 
 export const Route = createFileRoute("/admin/theme")({
   loader: async () => {
@@ -20,9 +21,12 @@ function AdminThemePage() {
   const { settings, themeId, vars } = Route.useLoaderData()
   const { theme } = resolveTheme(settings)
 
-  // Draft state for editing (not persisted to repo yet)
+  // Draft state for editing
   const [draftThemeId, setDraftThemeId] = React.useState(themeId)
   const [draftVars, setDraftVars] = React.useState<Record<string, unknown>>(vars)
+
+  // Save state
+  const [saving, setSaving] = React.useState(false)
 
   // Auto-preview toggle (persists)
   const [autoPreview, setAutoPreview] = React.useState<boolean>(() => {
@@ -35,7 +39,9 @@ function AdminThemePage() {
 
   const themes = listThemes()
 
-  function buildPreviewSettings() {
+  function buildNextSettings() {
+    // IMPORTANT: keep whatever shape your settings.theme uses
+    // You currently use settings.theme.active + settings.theme.vars
     return {
       ...settings,
       theme: {
@@ -66,7 +72,7 @@ function AdminThemePage() {
   // Auto write preview settings on change (for live preview tab)
   React.useEffect(() => {
     if (!autoPreview) return
-    writePreviewSettings(buildPreviewSettings())
+    writePreviewSettings(buildNextSettings())
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoPreview, draftThemeId, draftVars])
 
@@ -85,6 +91,7 @@ function AdminThemePage() {
           className="w-full rounded-md border px-3 py-2 text-sm"
           value={draftThemeId}
           onChange={(e) => setDraftThemeId(e.target.value)}
+          disabled={saving}
         >
           {themes.map((t) => (
             <option key={t.id} value={t.id}>
@@ -100,6 +107,7 @@ function AdminThemePage() {
           type="checkbox"
           checked={autoPreview}
           onChange={(e) => setAutoPreview(e.target.checked)}
+          disabled={saving}
         />
         <label htmlFor="autoPreview" className="text-sm">
           Auto update live preview
@@ -117,18 +125,29 @@ function AdminThemePage() {
 
       <section className="flex flex-wrap gap-3">
         <button
-          className="rounded-md border px-3 py-2 text-sm"
-          onClick={() => {
-            alert("Save: TODO (will commit to GitHub later).")
+          className="rounded-md border px-3 py-2 text-sm disabled:opacity-60"
+          disabled={saving}
+          onClick={async () => {
+            try {
+              setSaving(true)
+              const nextSettings = buildNextSettings()
+              await commitThemeSettings(nextSettings)
+              alert("Theme saved to GitHub ✅ (settings.json committed)")
+            } catch (e: any) {
+              alert(e?.message ?? String(e))
+            } finally {
+              setSaving(false)
+            }
           }}
         >
-          Save
+          {saving ? "Saving…" : "Save"}
         </button>
 
         <button
-          className="rounded-md border px-3 py-2 text-sm"
+          className="rounded-md border px-3 py-2 text-sm disabled:opacity-60"
+          disabled={saving}
           onClick={() => {
-            writePreviewSettings(buildPreviewSettings())
+            writePreviewSettings(buildNextSettings())
             const base = import.meta.env.BASE_URL || "/"
             window.open(`${window.location.origin}${base}?preview=true`, "_blank")
           }}
@@ -137,7 +156,8 @@ function AdminThemePage() {
         </button>
 
         <button
-          className="rounded-md border px-3 py-2 text-sm"
+          className="rounded-md border px-3 py-2 text-sm disabled:opacity-60"
+          disabled={saving}
           onClick={() => {
             clearPreviewSettings()
             alert("Preview cleared.")
@@ -150,6 +170,11 @@ function AdminThemePage() {
       <section className="rounded-lg border p-4 text-xs whitespace-pre-wrap">
         <div className="font-medium mb-2">Current repo settings (read-only)</div>
         {JSON.stringify(settings.theme, null, 2)}
+      </section>
+
+      <section className="rounded-lg border p-4 text-xs whitespace-pre-wrap">
+        <div className="font-medium mb-2">Draft theme (what will be saved)</div>
+        {JSON.stringify(buildNextSettings().theme, null, 2)}
       </section>
     </div>
   )

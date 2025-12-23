@@ -3,7 +3,7 @@ import { createFileRoute } from "@tanstack/react-router"
 import { loadSettings } from "@/core/content/loadSettings"
 import type { SiteSettings } from "@/core/content/types"
 import { FormField } from "@/admin/components/FormField"
-import { writePreviewSettings, clearPreviewSettings } from "@/core/preview/previewSettings"
+import { commitSiteSettings } from "@/core/github/commit"
 
 export const Route = createFileRoute("/admin/settings")({
   loader: async () => {
@@ -31,42 +31,12 @@ type PermalinkPreset = {
 }
 
 const PERMALINK_PRESETS: PermalinkPreset[] = [
-  {
-    id: "plain",
-    label: "Plain",
-    pattern: "/:slug/",
-    example: "/my-post/",
-  },
-  {
-    id: "day_name",
-    label: "Day and name",
-    pattern: "/:year/:month/:day/:slug/",
-    example: "/2025/12/19/my-post/",
-  },
-  {
-    id: "month_name",
-    label: "Month and name",
-    pattern: "/:year/:month/:slug/",
-    example: "/2025/12/my-post/",
-  },
-  {
-    id: "numeric",
-    label: "Numeric",
-    pattern: "/archives/:id/",
-    example: "/archives/12345/",
-  },
-  {
-    id: "category_name",
-    label: "Category and name",
-    pattern: "/:category/:slug/",
-    example: "/tech/my-post/",
-  },
-  {
-    id: "custom",
-    label: "Custom",
-    pattern: "/:slug/",
-    example: "/my-post/",
-  },
+  { id: "plain", label: "Plain", pattern: "/:slug/", example: "/my-post/" },
+  { id: "day_name", label: "Day and name", pattern: "/:year/:month/:day/:slug/", example: "/2025/12/19/my-post/" },
+  { id: "month_name", label: "Month and name", pattern: "/:year/:month/:slug/", example: "/2025/12/my-post/" },
+  { id: "numeric", label: "Numeric", pattern: "/archives/:id/", example: "/archives/12345/" },
+  { id: "category_name", label: "Category and name", pattern: "/:category/:slug/", example: "/tech/my-post/" },
+  { id: "custom", label: "Custom", pattern: "/:slug/", example: "/my-post/" },
 ]
 
 const AVAILABLE_TOKENS = [
@@ -84,39 +54,34 @@ function detectPreset(pattern: string) {
   return preset?.id ?? "custom"
 }
 
+// Branch rule based on "cd"
+function getWriteBranchFromCd(cd: boolean | undefined) {
+  return cd ? "main" : "develop"
+}
+
 function AdminSettingsPage() {
   const { settings } = Route.useLoaderData()
 
-  const [draft, setDraft] = React.useState<SiteSettings>(() => settings)
+  const [draft, setDraft] = React.useState<SiteSettings>(() => {
+    // Ensure defaults exist so UI doesn’t break if fields are missing in file
+    return {
+      ...settings,
+      language: (settings as any).language ?? "en",
+      logo: (settings as any).logo ?? "",
+      favicon: (settings as any).favicon ?? "",
+      cd: (settings as any).cd ?? false,
+      indexCategories: (settings as any).indexCategories ?? true,
+      permalinks: {
+        ...(settings as any).permalinks,
+        post: normalizePostPermalink((settings as any).permalinks?.post ?? "/:slug/"),
+      },
+    } as SiteSettings
+  })
 
   // Permalink selector mode
   const [permalinkMode, setPermalinkMode] = React.useState<string>(() =>
     detectPreset(draft.permalinks?.post ?? "/:slug/")
   )
-
-  // Auto-preview toggle (persisted)
-  const [autoPreview, setAutoPreview] = React.useState<boolean>(() => {
-    try {
-      return localStorage.getItem("bloghub.previewAutoSettings") === "true"
-    } catch {
-      return false
-    }
-  })
-
-  // persist toggle
-  React.useEffect(() => {
-    try {
-      localStorage.setItem("bloghub.previewAutoSettings", String(autoPreview))
-    } catch {
-      // ignore
-    }
-  }, [autoPreview])
-
-  // auto-write preview when enabled
-  React.useEffect(() => {
-    if (!autoPreview) return
-    writePreviewSettings(draft)
-  }, [autoPreview, draft])
 
   const onChange = <K extends keyof SiteSettings>(key: K, value: SiteSettings[K]) => {
     setDraft((prev) => ({ ...prev, [key]: value }))
@@ -151,32 +116,32 @@ function AdminSettingsPage() {
   }
 
   const currentPermalink = normalizePostPermalink(draft.permalinks?.post ?? "/:slug/")
+  const writeBranch = getWriteBranchFromCd((draft as any).cd)
 
   return (
     <div className="max-w-3xl space-y-8">
       <header className="space-y-2">
         <h1 className="text-2xl font-semibold">Site settings</h1>
-        <p className="text-sm opacity-80">
-          Configure global settings used by the generator and themes.
-        </p>
+        <p className="text-sm opacity-80">Configure global settings used by the generator and themes.</p>
       </header>
 
+      {/* General */}
       <section className="space-y-5 rounded-lg border bg-white p-5">
         <div className="text-sm font-semibold">General</div>
 
         <FormField label="Site name" hint="Shown in themes and browser titles (depending on theme).">
           <input
             className="w-full rounded-md border px-3 py-2 text-sm"
-            value={draft.siteName ?? ""}
-            onChange={(e) => onChange("siteName", e.target.value as any)}
+            value={(draft as any).siteName ?? ""}
+            onChange={(e) => onChange("siteName" as any, e.target.value as any)}
           />
         </FormField>
 
         <FormField label="Tagline" hint="Optional short description.">
           <input
             className="w-full rounded-md border px-3 py-2 text-sm"
-            value={draft.tagline ?? ""}
-            onChange={(e) => onChange("tagline", e.target.value as any)}
+            value={(draft as any).tagline ?? ""}
+            onChange={(e) => onChange("tagline" as any, e.target.value as any)}
           />
         </FormField>
 
@@ -186,21 +151,89 @@ function AdminSettingsPage() {
         >
           <input
             className="w-full rounded-md border px-3 py-2 text-sm"
-            value={(draft.siteUrl ?? "") as any}
-            onChange={(e) => onChange("siteUrl", e.target.value as any)}
+            value={(draft as any).siteUrl ?? ""}
+            onChange={(e) => onChange("siteUrl" as any, e.target.value as any)}
             placeholder="https://example.com/"
           />
         </FormField>
+
+        <FormField
+          label="Language"
+          hint='Site language code (used by themes/SEO). Examples: "en", "es", "ca".'
+        >
+          <input
+            className="w-full rounded-md border px-3 py-2 text-sm"
+            value={(draft as any).language ?? "en"}
+            onChange={(e) => onChange("language" as any, e.target.value as any)}
+            placeholder="en"
+          />
+        </FormField>
+
+        <FormField
+          label="Logo"
+          hint='Path or URL to a logo. Example: "/assets/logo.png".'
+        >
+          <input
+            className="w-full rounded-md border px-3 py-2 text-sm font-mono"
+            value={(draft as any).logo ?? ""}
+            onChange={(e) => onChange("logo" as any, e.target.value as any)}
+            placeholder="/assets/logo.png"
+          />
+        </FormField>
+
+        <FormField
+          label="Favicon"
+          hint='Path or URL to a favicon. Example: "/assets/favicon.ico".'
+        >
+          <input
+            className="w-full rounded-md border px-3 py-2 text-sm font-mono"
+            value={(draft as any).favicon ?? ""}
+            onChange={(e) => onChange("favicon" as any, e.target.value as any)}
+            placeholder="/assets/favicon.ico"
+          />
+        </FormField>
+
+        <FormField
+          label="Continuous deployment (CD)"
+          hint='If enabled, Save will commit to "main" (redeploy). If disabled, Save commits to "develop" and you’ll deploy later.'
+        >
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={Boolean((draft as any).cd)}
+              onChange={(e) => onChange("cd" as any, e.target.checked as any)}
+            />
+            Enable CD (commit to main)
+          </label>
+
+          <div className="mt-2 text-xs opacity-70">
+            Current save branch: <span className="font-mono">{writeBranch}</span>
+          </div>
+        </FormField>
+
+        <FormField
+          label="Index categories"
+          hint="If enabled, categories will be indexed/visible in the site navigation (theme-dependent)."
+        >
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={Boolean((draft as any).indexCategories)}
+              onChange={(e) => onChange("indexCategories" as any, e.target.checked as any)}
+            />
+            Enable category index
+          </label>
+        </FormField>
       </section>
 
+      {/* Permalinks */}
       <section className="space-y-5 rounded-lg border bg-white p-5">
         <div className="text-sm font-semibold">Permalinks</div>
 
         <div className="space-y-3">
           {PERMALINK_PRESETS.filter((p) => p.id !== "custom").map((p) => {
             const selected =
-              permalinkMode !== "custom" &&
-              normalizePostPermalink(p.pattern) === currentPermalink
+              permalinkMode !== "custom" && normalizePostPermalink(p.pattern) === currentPermalink
 
             return (
               <label
@@ -247,7 +280,7 @@ function AdminSettingsPage() {
 
               <input
                 className="w-full rounded-md border px-3 py-2 text-sm font-mono"
-                value={draft.permalinks?.post ?? "/:slug/"}
+                value={(draft as any).permalinks?.post ?? "/:slug/"}
                 onChange={(e) => onChangePermalink(e.target.value)}
                 disabled={permalinkMode !== "custom"}
               />
@@ -263,66 +296,27 @@ function AdminSettingsPage() {
                   ))}
                 </div>
               </div>
-
-              <div className="text-xs opacity-70 leading-5">
-                After saving permalinks, you’ll run{" "}
-                <span className="font-mono">npm run generate</span> (later we’ll automate this in CI).
-              </div>
             </div>
           </label>
         </div>
       </section>
 
+      {/* Actions */}
       <section className="flex flex-wrap items-center gap-3">
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={autoPreview}
-            onChange={(e) => setAutoPreview(e.target.checked)}
-          />
-          Auto update live preview
-        </label>
-
         <button
           className="rounded-md border px-3 py-2 text-sm"
-          onClick={() => {
-            // placeholder for GitHub commit later
-            alert("Save: TODO (will commit content/site/settings.json to GitHub later).")
+          onClick={async () => {
+            try {
+              const branch = getWriteBranchFromCd((draft as any).cd)
+              await commitSiteSettings(draft, branch)
+              alert(`Settings saved to GitHub ✅ (branch: ${branch})`)
+            } catch (e: any) {
+              alert(e?.message ?? String(e))
+            }
           }}
         >
           Save
         </button>
-
-        <button
-          className="rounded-md border px-3 py-2 text-sm"
-          onClick={() => {
-            writePreviewSettings(draft)
-            const base = import.meta.env.BASE_URL || "/"
-            window.open(`${window.location.origin}${base}?preview=true`, "_blank")
-          }}
-        >
-          Live preview
-        </button>
-
-        <button
-          className="rounded-md border px-3 py-2 text-sm"
-          onClick={() => {
-            clearPreviewSettings()
-            alert("Preview cleared.")
-          }}
-        >
-          Clear preview
-        </button>
-      </section>
-
-      <section className="rounded-lg border p-4 text-xs whitespace-pre-wrap bg-white">
-        <div className="font-medium mb-2">Draft settings (what would be saved)</div>
-        {JSON.stringify(draft, null, 2)}
-      </section>
-
-      <section className="rounded-lg border p-4 text-xs whitespace-pre-wrap bg-white">
-        <div className="font-medium mb-2">Repo settings (read-only)</div>
-        {JSON.stringify(settings, null, 2)}
       </section>
     </div>
   )

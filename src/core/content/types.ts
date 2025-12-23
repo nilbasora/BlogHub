@@ -1,7 +1,12 @@
 export type SiteSettings = {
-  siteName: string
+  siteName?: string
   tagline?: string
   siteUrl?: string
+  language?: string
+  logo?: string
+  favicon?: string
+  cd?: boolean
+  indexCategories?: boolean
   permalinks: {
     post: string
   }
