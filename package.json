@@ -8,8 +8,9 @@
     "fix:settings": "tsx scripts/validate-settings.ts --fix",
     "validate:themes": "tsx scripts/validate-themes.ts",
     "generate": "tsx scripts/generate-content.ts",
-    "dev": "npm run validate:settings && npm run validate:themes && npm run generate && vite",
-    "build": "npm run validate:settings && npm run validate:themes && npm run generate && tsc -b && vite build",
+    "check:env": "tsx scripts/check-env.ts",
+    "dev": "npm run validate:settings && npm run validate:themes && npm run generate && npm run check:env && vite",
+    "build": "npm run validate:settings && npm run validate:themes && npm run generate && npm run check:env && tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview"
   },

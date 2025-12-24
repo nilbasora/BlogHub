@@ -8,7 +8,7 @@ import {
   PostFrontmatter,
   PostsIndex,
   RoutesManifest,
-} from "./types"
+} from "@/core/utils/types"
 import { resolvePostPermalink } from "./permalink"
 import { buildSearchText } from "./utils"
 
@@ -70,18 +70,20 @@ function main() {
 
     const url = resolvePostPermalink(post, settings)
 
+    // Flatten nested folders if any (safe filename for output)
+    const safeName = file.replaceAll("/", "__")
+
+    // URL path (what the browser/static route should fetch) — no "/public"
+    const generatedUrlPath = `/generated/posts/${safeName}`
+
+    // Disk path (where the file is actually written) — inside /public
+    const generatedDiskPath = path.join(GENERATED_POSTS_DIR, safeName)
+
     // Write body-only markdown copy (no frontmatter) into public/generated/posts/
-    const safeName = file.replaceAll("/", "__") // flatten nested folders if any
-    const generatedBodyPath = `public/generated/posts/${safeName}`
+    fs.writeFileSync(generatedDiskPath, parsed.content.trimStart(), "utf8")
 
-    fs.writeFileSync(
-      path.join(ROOT, generatedBodyPath),
-      parsed.content.trimStart(),
-      "utf8"
-    )
-
-    // Manifest points to generated body markdown (browser-friendly)
-    routesManifest.routes[url] = `/${generatedBodyPath}`
+    // Manifest points to URL path (browser-friendly)
+    routesManifest.routes[url] = generatedUrlPath
 
     postsIndex.posts.push({
       id: post.id,
