@@ -1,5 +1,4 @@
-import * as React from "react"
-import type { ThemeSchema } from "@/core/themes/types"
+import type { ThemeSchema } from "@/core/utils/types"
 
 type Props = {
   schema: ThemeSchema

@@ -1,4 +1,4 @@
-import type { SiteSettings } from "@/core/content/types"
+import type { SiteSettings } from "@/core/utils/types"
 import { deleteFile, putBinaryFile, putJsonFile, putTextFile, repoPathFromPublicUrl } from "./contents"
 
 function fmValue(v: unknown) {

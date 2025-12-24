@@ -1,5 +1,5 @@
 import * as React from "react"
-import type { SiteSettings } from "@/core/content/types"
+import type { SiteSettings } from "@/core/utils/types"
 import {
   isPreviewMode,
   readPreviewSettings,

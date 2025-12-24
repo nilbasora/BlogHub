@@ -1,4 +1,4 @@
-import type { ThemeModule } from "@/core/themes/types"
+import type { ThemeModule } from "@/core/utils/types"
 import { Home } from "./pages/Home"
 import { Post } from "./pages/Post"
 

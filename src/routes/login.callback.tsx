@@ -37,7 +37,7 @@ function LoginCallbackPage() {
         await validateTokenForRepo(token)
 
         setMsg("Checking branches (main/develop)...")
-        rollbackInfo = await ensureDevelopSyncedWithMain(token)
+        rollbackInfo = await ensureDevelopSyncedWithMain()
 
         // ✅ Only store token after repo is in a good state
         setGithubToken(token)
@@ -46,22 +46,19 @@ function LoginCallbackPage() {
         clearLoginNext()
         navigate({ to: next })
       } catch (e: any) {
-        // If a merge succeeded and THEN something failed, rollback develop.
         try {
-          if (token && rollbackInfo?.previousDevelopSha) {
-            await rollbackDevelop(token, rollbackInfo.previousDevelopSha)
+          if (rollbackInfo?.previousDevelopSha) {
+            await rollbackDevelop(rollbackInfo.previousDevelopSha)
           }
         } catch {
-          // swallow rollback errors; we still block login
+          // swallow rollback errors
         }
 
-        // Ensure we don't keep a token when repo checks fail
         clearGithubToken()
 
         const friendly = e?.message ?? String(e)
         setLoginError(friendly)
 
-        // Send user back to login page showing the error
         navigate({ to: "/login" })
       }
     })()

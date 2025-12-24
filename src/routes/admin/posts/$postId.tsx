@@ -5,10 +5,10 @@ import { loadPostsIndex } from "@/core/content/loadPostsIndex"
 import { loadRoutesManifest } from "@/core/content/loadRoutesManifest"
 import { loadMarkdownPost } from "@/core/content/loadMarkdownPost"
 import { resolvePostPermalink } from "@/../scripts/permalink"
-import { FormField } from "@/admin/components/FormField"
+import { FormField } from "@/components/admin/FormField"
 import { writePreviewPostDraft } from "@/core/preview/previewPost"
 import { writePreviewSettings } from "@/core/preview/previewSettings"
-import { MarkdownEditor } from "@/admin/components/MarkdownEditor"
+import { MarkdownEditor } from "@/components/admin/MarkdownEditor"
 import { parseFrontmatterBlock, buildMarkdownFile } from "@/core/posts/frontmatter"
 
 export const Route = createFileRoute("/admin/posts/$postId")({

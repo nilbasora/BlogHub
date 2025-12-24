@@ -1,7 +1,7 @@
-import { PostFrontmatter, SiteSettings } from "./types"
+import type { PostsIndexItem, SiteSettings } from "@/core/utils/types"
 
 export function resolvePostPermalink(
-  post: PostFrontmatter,
+  post: PostsIndexItem,
   settings: SiteSettings
 ): string {
   const template = settings.permalinks.post

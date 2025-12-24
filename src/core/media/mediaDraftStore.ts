@@ -1,4 +1,4 @@
-import type { MediaIndexItem } from "./types"
+import type { MediaIndexItem } from "@/core/utils/types"
 
 type DraftState = {
   added: MediaIndexItem[]          // new items staged

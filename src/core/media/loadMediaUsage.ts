@@ -1,4 +1,4 @@
-import type { MediaUsage } from "./types"
+import type { MediaUsage } from "@/core/utils/types"
 
 export async function loadMediaUsage(): Promise<MediaUsage> {
   try {

@@ -1,4 +1,4 @@
-import type { PostsIndex } from "./types"
+import type { PostsIndex } from "@/core/utils/types"
 import { withBase } from "@/core/config/paths"
 
 export async function loadPostsIndex(): Promise<PostsIndex> {

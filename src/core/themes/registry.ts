@@ -1,4 +1,4 @@
-import type { ThemeModule } from "./types"
+import type { ThemeModule } from "@/core/utils/types"
 import { theme as minimal } from "@/themes/minimal"
 import { theme as clean } from "@/themes/clean"
 

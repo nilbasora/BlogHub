@@ -1,5 +1,4 @@
-import type { SiteSettings } from "@/core/content/types"
-import type { ThemeModule } from "./types"
+import type { ThemeModule, SiteSettings } from "@/core/utils/types"
 import { getThemeById } from "./registry"
 import { normalizeThemeVars } from "./validateVars"
 

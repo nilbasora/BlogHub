@@ -1,8 +1,8 @@
 import * as React from "react"
 import { createFileRoute } from "@tanstack/react-router"
 import { loadSettings } from "@/core/content/loadSettings"
-import type { SiteSettings } from "@/core/content/types"
-import { FormField } from "@/admin/components/FormField"
+import type { SiteSettings } from "@/core/utils/types"
+import { FormField } from "@/components/admin/FormField"
 import { commitSiteSettings } from "@/core/github/commit"
 
 export const Route = createFileRoute("/admin/settings")({

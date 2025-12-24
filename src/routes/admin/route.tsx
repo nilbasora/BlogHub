@@ -1,7 +1,7 @@
 import * as React from "react"
 import { Outlet, createFileRoute, redirect } from "@tanstack/react-router"
-import { AdminTopbar } from "@/admin/components/AdminTopbar"
-import { AdminSidebar } from "@/admin/components/AdminSidebar"
+import { AdminTopbar } from "@/components/admin/AdminTopbar"
+import { AdminSidebar } from "@/components/admin/AdminSidebar"
 import { getGithubToken, validateTokenForRepo } from "@/core/github/oauth"
 
 let validatedToken: string | null = null

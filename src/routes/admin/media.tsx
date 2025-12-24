@@ -1,10 +1,10 @@
 import * as React from "react"
 import { createFileRoute } from "@tanstack/react-router"
-import { FormField } from "@/admin/components/FormField"
-import { ConfirmDialog } from "@/admin/components/ConfirmDialog" // use whichever path you actually have
+import { FormField } from "@/components/admin/FormField"
+import { ConfirmDialog } from "@/components/admin/ConfirmDialog" // use whichever path you actually have
 import { loadMediaIndex } from "@/core/media/loadMediaIndex"
 import { loadMediaUsage } from "@/core/media/loadMediaUsage"
-import type { MediaRow, MediaType } from "@/core/media/types"
+import type { MediaRow, MediaType } from "@/core/utils/types"
 import {
   addDraftMedia,
   clearMediaDraft,

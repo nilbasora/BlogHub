@@ -1,4 +1,4 @@
-import type { SiteSettings } from "@/core/content/types"
+import type { SiteSettings } from "@/core/utils/types"
 
 export function getWriteBranch(settings: SiteSettings): "main" | "develop" {
   return settings.cd ? "main" : "develop"

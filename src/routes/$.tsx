@@ -7,6 +7,7 @@ import { resolveTheme } from "@/core/themes/resolveTheme"
 import { usePreviewSettings } from "@/core/preview/PreviewSettingsProvider"
 import { isPreviewMode } from "@/core/preview/previewSettings"
 import { readPreviewPostDraft } from "@/core/preview/previewPost"
+import type { PostsIndexItem, PostStatus } from "@/core/utils/types"
 
 export const Route = createFileRoute("/$")({
   loader: async ({ params }) => {
@@ -32,19 +33,41 @@ export const Route = createFileRoute("/$")({
       if (previewId && draft && (draft.id === previewId || draft.frontmatter?.id === previewId)) {
         const draftUrl = draft.url?.endsWith("/") ? draft.url : (draft.url ?? "") + "/"
         if (draftUrl === normalized) {
-          const fm = draft.frontmatter ?? {}
-          const post = {
+          const fm = (draft.frontmatter ?? {}) as Record<string, unknown>
+
+          const tags = Array.isArray(fm.tags) ? fm.tags.map(String) : []
+          const categories = Array.isArray(fm.categories) ? fm.categories.map(String) : []
+
+          const status: PostStatus =
+            fm.status === "published" || fm.status === "draft"
+              ? (fm.status as PostStatus)
+              : "draft"
+
+          const title = String(fm.title ?? "(Untitled)")
+          const excerpt = fm.excerpt != null ? String(fm.excerpt) : undefined
+
+          const post: PostsIndexItem = {
             id: String(fm.id ?? draft.id),
-            title: String(fm.title ?? "(Untitled)"),
+            title,
             slug: String(fm.slug ?? ""),
-            url: normalized,
             date: String(fm.date ?? ""),
-            excerpt: fm.excerpt,
-            tags: Array.isArray(fm.tags) ? fm.tags : [],
-            categories: Array.isArray(fm.categories) ? fm.categories : [],
-            status: fm.status ?? "draft",
-            // keep any extra fields if your Post type allows it
-            ...fm,
+            status,
+
+            url: normalized,
+
+            // normalized fields (always present)
+            tags,
+            categories,
+
+            // SEO normalized to null when missing
+            featured_image: fm.featured_image != null ? String(fm.featured_image) : null,
+            seo_title: fm.seo_title != null ? String(fm.seo_title) : null,
+            seo_description: fm.seo_description != null ? String(fm.seo_description) : null,
+
+            excerpt,
+
+            // required by PostsIndexItem
+            search: [title, excerpt ?? "", tags.join(" "), categories.join(" ")].join(" ").trim(),
           }
 
           return {

@@ -1,4 +1,4 @@
-import type { ThemePostProps } from "@/core/themes/types"
+import type { ThemePostProps } from "@/core/utils/types"
 import { MarkdownRenderer } from "@/components/MarkdownRenderer"
 import { Link } from "@tanstack/react-router"
 

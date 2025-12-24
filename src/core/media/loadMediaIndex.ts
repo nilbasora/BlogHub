@@ -1,4 +1,4 @@
-import type { MediaIndex } from "./types"
+import type { MediaIndex } from "@/core/utils/types"
 
 export async function loadMediaIndex(): Promise<MediaIndex> {
   try {

@@ -1,4 +1,4 @@
-import type { SiteSettings } from "./types"
+import type { SiteSettings } from "@/core/utils/types"
 import { withBase } from "@/core/config/paths"
 
 export async function loadSettings(): Promise<SiteSettings> {

@@ -1,3 +1,5 @@
+import type { ReactElement } from "react"
+
 // ----------------------------
 // Shared helpers
 // ----------------------------
@@ -36,16 +38,34 @@ export type SiteSettings = {
 // ----------------------------
 export type PostStatus = "draft" | "published"
 
-export type PostsIndexItem = {
+export type PostFrontmatter = {
   id: string
   title: string
   slug: string
-  url: string
   date: ISODateString
+  status: PostStatus
+
   excerpt?: string
+  tags?: string[]
+  categories?: string[]
+
+  featured_image?: string | null
+  seo_title?: string | null
+  seo_description?: string | null
+}
+
+export type PostsIndexItem = PostFrontmatter & {
+  url: string
+
+  // normalized fields (always present in index)
   tags: string[]
   categories: string[]
-  status: PostStatus
+
+  // SEO fields may be normalized to null
+  featured_image?: string | null
+  seo_title?: string | null
+  seo_description?: string | null
+
   search: string
 }
 
@@ -134,7 +154,7 @@ export type ThemeModule = {
   schema: ThemeSchema
   defaults: ThemeVars
   render: {
-    Home: (props: ThemeHomeProps) => JSX.Element
-    Post: (props: ThemePostProps) => JSX.Element
+    Home: (props: ThemeHomeProps) => ReactElement
+    Post: (props: ThemePostProps) => ReactElement
   }
 }

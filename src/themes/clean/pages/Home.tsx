@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router"
-import type { ThemeHomeProps } from "@/core/themes/types"
+import type { ThemeHomeProps } from "@/core/utils/types"
 
 export function Home({ settings, themeVars, posts }: ThemeHomeProps) {
   const brandName = String(themeVars.brandName ?? settings.siteName)

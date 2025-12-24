@@ -1,4 +1,4 @@
-import type { ThemeModule, ThemeField } from "./types"
+import type { ThemeModule, ThemeField } from "@/core/utils/types"
 
 type NormalizeResult = {
   vars: Record<string, unknown>

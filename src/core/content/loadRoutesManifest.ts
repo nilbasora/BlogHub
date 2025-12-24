@@ -1,4 +1,4 @@
-import type { RoutesManifest } from "./types"
+import type { RoutesManifest } from "@/core/utils/types"
 import { withBase } from "@/core/config/paths"
 
 export async function loadRoutesManifest(): Promise<RoutesManifest> {
