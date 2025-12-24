@@ -1,9 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router"
-import { loadPostsIndex } from "@/core/content/loadPostsIndex"
+import { loadPostsIndexFromRepo } from "@/core/content/loadPostsIndexFromRepo"
 
 export const Route = createFileRoute("/admin/posts/")({
   loader: async () => {
-    const index = await loadPostsIndex()
+    // Always read from repo develop branch (not the built Vite asset)
+    const index = await loadPostsIndexFromRepo("develop")
+
     // newest first
     const posts = [...index.posts].sort((a, b) => (a.date < b.date ? 1 : -1))
     return { posts }
@@ -19,9 +21,7 @@ function AdminPostsPage() {
       <header className="flex items-start justify-between gap-4">
         <div className="space-y-1">
           <h1 className="text-2xl font-semibold">Blog posts</h1>
-          <p className="text-sm opacity-80">
-            Create, edit and publish posts.
-          </p>
+          <p className="text-sm opacity-80">Create, edit and publish posts.</p>
         </div>
 
         <Link

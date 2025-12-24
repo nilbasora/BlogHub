@@ -1,9 +1,11 @@
 import * as React from "react"
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router"
-import { loadSettings } from "@/core/content/loadSettings"
-import { loadPostsIndex } from "@/core/content/loadPostsIndex"
-import { loadRoutesManifest } from "@/core/content/loadRoutesManifest"
-import { loadMarkdownPost } from "@/core/content/loadMarkdownPost"
+
+import { loadSettingsFromRepo } from "@/core/content/loadSettingsFromRepo"
+import { loadPostsIndexFromRepo } from "@/core/content/loadPostsIndexFromRepo"
+import { loadRoutesManifestFromRepo } from "@/core/content/loadRoutesManifestFromRepo"
+import { loadMarkdownPostFromRepo } from "@/core/content/loadMarkdownPostFromRepo"
+
 import { resolvePostPermalink } from "@/../scripts/permalink"
 import { FormField } from "@/components/admin/FormField"
 import { writePreviewPostDraft } from "@/core/preview/previewPost"
@@ -11,12 +13,14 @@ import { writePreviewSettings } from "@/core/preview/previewSettings"
 import { MarkdownEditor } from "@/components/admin/MarkdownEditor"
 import { parseFrontmatterBlock, buildMarkdownFile } from "@/core/posts/frontmatter"
 
+const BRANCH = "develop"
+
 export const Route = createFileRoute("/admin/posts/$postId")({
   loader: async ({ params }) => {
     const postId = params.postId
 
     if (postId === "new") {
-      const settings = await loadSettings()
+      const settings = await loadSettingsFromRepo(BRANCH)
       const today = new Date().toISOString().slice(0, 10)
 
       return {
@@ -24,7 +28,7 @@ export const Route = createFileRoute("/admin/posts/$postId")({
         settings,
         existing: null,
         initial: {
-          id: `${crypto.randomUUID()}`,
+          id: crypto.randomUUID(),
           title: "",
           slug: "",
           date: today,
@@ -41,9 +45,9 @@ export const Route = createFileRoute("/admin/posts/$postId")({
     }
 
     const [settings, index, manifest] = await Promise.all([
-      loadSettings(),
-      loadPostsIndex(),
-      loadRoutesManifest(),
+      loadSettingsFromRepo(BRANCH),
+      loadPostsIndexFromRepo(BRANCH),
+      loadRoutesManifestFromRepo(BRANCH),
     ])
 
     const postMeta = index.posts.find((p) => p.id === postId)
@@ -66,7 +70,7 @@ export const Route = createFileRoute("/admin/posts/$postId")({
       }
     }
 
-    const raw = await loadMarkdownPost(mdPath)
+    const raw = await loadMarkdownPostFromRepo(mdPath, BRANCH)
     const parsed = parseFrontmatterBlock(raw)
 
     return {
@@ -117,19 +121,18 @@ function ensureTitleAndSlug(draft: Draft): Draft {
   const sid = shortId(next.id)
 
   if (!next.title?.trim()) {
-    next.title = `Untitle - ${sid}`
+    next.title = `Untitled - ${sid}`
   }
 
   if (!next.slug?.trim()) {
     const base = slugifyTitle(next.title)
-    next.slug = base || `untitle-${sid}`
+    next.slug = base || `untitled-${sid}`
   }
 
   return next
 }
 
 function deepEqualDraft(a: Draft, b: Draft): boolean {
-  // stable stringify: order keys by building a normalized object
   const norm = (d: Draft) => ({
     id: d.id,
     title: d.title,
@@ -165,15 +168,12 @@ function AdminPostEditorPage() {
   }
 
   const initial = data.initial as Draft
-
   const [draft, setDraft] = React.useState<Draft>(() => initial)
 
   React.useEffect(() => {
     setDraft(initial)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [postId])
 
-  // Track "last saved/published" snapshot so we can warn on navigation/close
   const lastSavedRef = React.useRef<Draft>(initial)
   React.useEffect(() => {
     lastSavedRef.current = initial
@@ -181,19 +181,16 @@ function AdminPostEditorPage() {
 
   const isDirty = !deepEqualDraft(draft, lastSavedRef.current)
 
-  // Warn on tab close / refresh
   React.useEffect(() => {
     const onBeforeUnload = (e: BeforeUnloadEvent) => {
       if (!isDirty) return
       e.preventDefault()
-      // Chrome requires returnValue to be set
       e.returnValue = ""
     }
     window.addEventListener("beforeunload", onBeforeUnload)
     return () => window.removeEventListener("beforeunload", onBeforeUnload)
   }, [isDirty])
 
-  // Helper: confirm leaving this page
   function confirmLeave(): boolean {
     if (!isDirty) return true
     return window.confirm(
@@ -256,7 +253,6 @@ function AdminPostEditorPage() {
         </div>
 
         <div className="flex flex-wrap gap-2 justify-end">
-          {/* Back with unsaved-changes confirmation */}
           <button
             type="button"
             className="rounded-md border px-3 py-2 text-sm bg-white"
@@ -275,26 +271,7 @@ function AdminPostEditorPage() {
 
               writePreviewSettings(data.settings as any)
 
-              const previewUrl = (() => {
-                try {
-                  return resolvePostPermalink(
-                    {
-                      id: d.id,
-                      title: d.title,
-                      slug: d.slug,
-                      date: d.date,
-                      status: d.status,
-                      excerpt: d.excerpt,
-                      tags: d.tags,
-                      categories: d.categories,
-                    } as any,
-                    data.settings as any
-                  )
-                } catch {
-                  const slug = d.slug?.trim() || "untitled"
-                  return `/${slug}/`
-                }
-              })()
+              const previewUrl = resolvedUrl
 
               writePreviewPostDraft({
                 id: postId === "new" ? d.id : postId,
@@ -321,14 +298,11 @@ function AdminPostEditorPage() {
             className="rounded-md border px-3 py-2 text-sm bg-neutral-900 text-white border-neutral-900"
             onClick={() => {
               const d = normalizeNewDraftIfNeeded()
-
-              // "Save as Draft"/"Publish" currently just builds the markdown file.
-              // Mark as saved so leaving won't warn (since user explicitly "saved/published").
               const file = buildMarkdownFile(d)
               console.log(`${publishLabel.toUpperCase()} FILE:\n`, file)
 
               lastSavedRef.current = d
-              setDraft(d) // keep state aligned
+              setDraft(d)
               alert(`${publishLabel}: TODO (will commit .md to GitHub later).`)
             }}
           >

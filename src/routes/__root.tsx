@@ -1,7 +1,14 @@
 import { Outlet, createRootRoute } from "@tanstack/react-router"
-import { PreviewSettingsProvider } from "@/core/preview/PreviewSettingsProvider"
+import { PreviewSettingsProvider, usePreviewSettings } from "@/core/preview/PreviewSettingsProvider"
+import { loadSettings } from "@/core/content/loadSettings"
+import { useSiteFavicon } from "@/core/seo/useSiteFavicon"
+import { SeoProvider } from "@/core/seo/SeoProvider"
 
 export const Route = createRootRoute({
+  loader: async () => {
+    const settings = await loadSettings()
+    return { settings }
+  },
   component: Root,
   notFoundComponent: () => (
     <div className="p-6 max-w-3xl mx-auto">
@@ -22,9 +29,23 @@ export const Route = createRootRoute({
 function Root() {
   return (
     <PreviewSettingsProvider>
+      <RootInner />
+    </PreviewSettingsProvider>
+  )
+}
+
+function RootInner() {
+  const { settings: repoSettings } = Route.useLoaderData()
+  const preview = usePreviewSettings()
+  const settings = preview.enabled && preview.settings ? preview.settings : repoSettings
+
+  useSiteFavicon(settings.favicon)
+
+  return (
+    <SeoProvider settings={settings}>
       <div className="min-h-dvh">
         <Outlet />
       </div>
-    </PreviewSettingsProvider>
+    </SeoProvider>
   )
 }

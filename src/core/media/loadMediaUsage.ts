@@ -2,7 +2,7 @@ import type { MediaUsage } from "@/core/utils/types"
 
 export async function loadMediaUsage(): Promise<MediaUsage> {
   try {
-    const res = await fetch("/content/generated/media-usage.json", { cache: "no-store" })
+    const res = await fetch("/public/generated/media-usage.json", { cache: "no-store" })
     if (!res.ok) throw new Error("media-usage not found")
     return (await res.json()) as MediaUsage
   } catch {

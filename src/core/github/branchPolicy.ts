@@ -1,10 +1,10 @@
 import type { SiteSettings } from "@/core/utils/types"
 
-export function getWriteBranch(settings: SiteSettings): "main" | "develop" {
-  return settings.cd ? "main" : "develop"
+export function getWriteBranch(_settings: SiteSettings): "develop" {
+  return "develop"
 }
 
 export function shouldShowDeploy(settings: SiteSettings): boolean {
-  // Deploy only makes sense when you commit to develop
+  // Show Deploy button only when deploy is manual
   return !settings.cd
 }

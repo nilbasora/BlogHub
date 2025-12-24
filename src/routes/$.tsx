@@ -8,6 +8,8 @@ import { usePreviewSettings } from "@/core/preview/PreviewSettingsProvider"
 import { isPreviewMode } from "@/core/preview/previewSettings"
 import { readPreviewPostDraft } from "@/core/preview/previewPost"
 import type { PostsIndexItem, PostStatus } from "@/core/utils/types"
+import { useSiteSettingsForSeo } from "@/core/seo/SeoProvider"
+import { useSeo } from "@/core/seo/useSeo"
 
 export const Route = createFileRoute("/$")({
   loader: async ({ params }) => {
@@ -99,6 +101,32 @@ function PostRoute() {
 
   const settings = preview.enabled && preview.settings ? preview.settings : repoSettings
   const { theme, vars } = resolveTheme(settings)
+
+  const site = useSiteSettingsForSeo()
+
+  const title =
+    post.seo_title && post.seo_title.trim() !== ""
+      ? post.seo_title
+      : post.title && post.title.trim() !== ""
+        ? `${post.title} · ${site.siteName ?? ""}`.trim().replace(/\s+·\s*$/, "")
+        : site.siteName ?? ""
+
+  const description =
+    post.seo_description && post.seo_description.trim() !== ""
+      ? post.seo_description
+      : post.excerpt && post.excerpt.trim() !== ""
+        ? post.excerpt
+        : site.tagline ?? ""
+
+  useSeo(site, {
+    title,
+    description,
+    canonicalPath: post.url, // "/something/"
+    canonicalUrl: site.siteUrl + post.url, // "https://example.com/something/"
+    ogType: "article",
+    image: post.featured_image,
+    twitterCard: "summary_large_image",
+  })
 
   return theme.render.Post({ settings, themeVars: vars, post, content })
 }

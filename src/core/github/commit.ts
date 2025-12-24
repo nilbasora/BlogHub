@@ -35,16 +35,16 @@ export async function commitThemeSettings(settings: SiteSettings, branch?: strin
 
 /** POSTS */
 export async function commitPostMd(opts: {
-  repoMdPath: string // e.g. "content/posts/hello-world.md"
+  repoMdPath: string // e.g. "public/posts/hello-world.md"
   frontmatter: Record<string, unknown>
-  body: string
-  message: string
+  body: string,
+  message?: string
 }) {
   const md = serializePostMd(opts.frontmatter, opts.body)
   return putTextFile({
     repoFilePath: opts.repoMdPath,
     content: md,
-    message: opts.message,
+    message: opts.message || `chore: update post ${opts.repoMdPath}`,
   })
 }
 

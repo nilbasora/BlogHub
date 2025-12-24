@@ -13,7 +13,7 @@ import { resolvePostPermalink } from "./permalink"
 import { buildSearchText } from "./utils"
 
 const ROOT = process.cwd()
-const CONTENT_DIR = path.join(ROOT, "content")
+const CONTENT_DIR = path.join(ROOT, "public")
 const POSTS_DIR = path.join(CONTENT_DIR, "posts")
 const GENERATED_DIR = path.join(CONTENT_DIR, "generated")
 const GENERATED_POSTS_DIR = path.join(GENERATED_DIR, "posts")
@@ -70,9 +70,9 @@ function main() {
 
     const url = resolvePostPermalink(post, settings)
 
-    // Write body-only markdown copy (no frontmatter) into content/generated/posts/
+    // Write body-only markdown copy (no frontmatter) into public/generated/posts/
     const safeName = file.replaceAll("/", "__") // flatten nested folders if any
-    const generatedBodyPath = `content/generated/posts/${safeName}`
+    const generatedBodyPath = `public/generated/posts/${safeName}`
 
     fs.writeFileSync(
       path.join(ROOT, generatedBodyPath),

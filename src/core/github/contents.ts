@@ -14,6 +14,8 @@ type PutContentsResponse = {
 
 type RepoInfo = { default_branch: string }
 
+const DEFAULT_WRITE_BRANCH = "develop"
+
 let cachedDefaultBranch: string | null = null
 
 export async function getDefaultBranch(): Promise<string> {
@@ -47,7 +49,10 @@ async function base64EncodeArrayBuffer(buf: ArrayBuffer) {
   return btoa(binary)
 }
 
-export async function getFileSha(repoFilePath: string, branch?: string): Promise<string | null> {
+export async function getFileSha(
+  repoFilePath: string,
+  branch?: string
+): Promise<string | null> {
   const b = branch || (await getDefaultBranch())
 
   try {
@@ -67,7 +72,7 @@ export async function putTextFile(opts: {
   message: string
   branch?: string
 }): Promise<PutContentsResponse> {
-  const branch = opts.branch || (await getDefaultBranch())
+  const branch = opts.branch || DEFAULT_WRITE_BRANCH
   const sha = await getFileSha(opts.repoFilePath, branch)
 
   const body = {
@@ -77,11 +82,14 @@ export async function putTextFile(opts: {
     ...(sha ? { sha } : {}),
   }
 
-  return configuredRepoRequest<PutContentsResponse>(`/contents/${encodeURIComponent(opts.repoFilePath)}`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  })
+  return configuredRepoRequest<PutContentsResponse>(
+    `/contents/${encodeURIComponent(opts.repoFilePath)}`,
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }
+  )
 }
 
 export async function putJsonFile(opts: {
@@ -91,7 +99,12 @@ export async function putJsonFile(opts: {
   branch?: string
 }): Promise<PutContentsResponse> {
   const content = JSON.stringify(opts.json, null, 2) + "\n"
-  return putTextFile({ repoFilePath: opts.repoFilePath, content, message: opts.message, branch: opts.branch })
+  return putTextFile({
+    repoFilePath: opts.repoFilePath,
+    content,
+    message: opts.message,
+    branch: opts.branch,
+  })
 }
 
 export async function putBinaryFile(opts: {
@@ -100,7 +113,7 @@ export async function putBinaryFile(opts: {
   message: string
   branch?: string
 }): Promise<PutContentsResponse> {
-  const branch = opts.branch || (await getDefaultBranch())
+  const branch = opts.branch || DEFAULT_WRITE_BRANCH
   const sha = await getFileSha(opts.repoFilePath, branch)
 
   const buf = await opts.file.arrayBuffer()
@@ -113,11 +126,14 @@ export async function putBinaryFile(opts: {
     ...(sha ? { sha } : {}),
   }
 
-  return configuredRepoRequest<PutContentsResponse>(`/contents/${encodeURIComponent(opts.repoFilePath)}`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  })
+  return configuredRepoRequest<PutContentsResponse>(
+    `/contents/${encodeURIComponent(opts.repoFilePath)}`,
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }
+  )
 }
 
 export async function deleteFile(opts: {
@@ -125,15 +141,24 @@ export async function deleteFile(opts: {
   message: string
   branch?: string
 }): Promise<PutContentsResponse> {
-  const branch = opts.branch || (await getDefaultBranch())
+  const branch = opts.branch || DEFAULT_WRITE_BRANCH
   const sha = await getFileSha(opts.repoFilePath, branch)
-  if (!sha) throw new Error(`Cannot delete: file not found (${opts.repoFilePath})`)
+  if (!sha) {
+    throw new Error(`Cannot delete: file not found (${opts.repoFilePath})`)
+  }
 
-  const body = { message: opts.message, sha, branch }
+  const body = {
+    message: opts.message,
+    sha,
+    branch,
+  }
 
-  return configuredRepoRequest<PutContentsResponse>(`/contents/${encodeURIComponent(opts.repoFilePath)}`, {
-    method: "DELETE",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  })
+  return configuredRepoRequest<PutContentsResponse>(
+    `/contents/${encodeURIComponent(opts.repoFilePath)}`,
+    {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }
+  )
 }
