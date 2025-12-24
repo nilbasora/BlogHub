@@ -1,0 +1,24 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <script>
+      // Auto-detect repo from first path segment:
+      // /<repo>/something -> base="/<repo>"
+      var l = window.location;
+      var segments = l.pathname.split("/"); // ["", "<repo>", ...]
+      var repo = segments.length > 1 ? segments[1] : "";
+      var base = repo ? "/" + repo : "";
+
+      // Path inside the SPA (everything after /<repo>)
+      var rest = "/" + segments.slice(2).join("/");
+      // Normalize: avoid "//"
+      rest = rest.replace(/^\/+/, "/");
+
+      // Redirect to index with encoded original path+query+hash
+      var target = base + "/?p=" + encodeURIComponent(rest + l.search + l.hash);
+      l.replace(target);
+    </script>
+  </head>
+  <body></body>
+</html>
