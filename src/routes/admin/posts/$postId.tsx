@@ -1,10 +1,10 @@
 import * as React from "react"
-import { createFileRoute, Link } from "@tanstack/react-router"
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router"
 import { loadSettings } from "@/core/content/loadSettings"
 import { loadPostsIndex } from "@/core/content/loadPostsIndex"
 import { loadRoutesManifest } from "@/core/content/loadRoutesManifest"
 import { loadMarkdownPost } from "@/core/content/loadMarkdownPost"
-import { resolvePostPermalink } from "@/../scripts/permalink" // if this isn't importable in your Vite build, we’ll copy the same logic into /src
+import { resolvePostPermalink } from "@/../scripts/permalink"
 import { FormField } from "@/admin/components/FormField"
 import { writePreviewPostDraft } from "@/core/preview/previewPost"
 import { writePreviewSettings } from "@/core/preview/previewSettings"
@@ -14,24 +14,21 @@ import { parseFrontmatterBlock, buildMarkdownFile } from "@/core/posts/frontmatt
 export const Route = createFileRoute("/admin/posts/$postId")({
   loader: async ({ params }) => {
     const postId = params.postId
-    const [settings, index, manifest] = await Promise.all([
-      loadSettings(),
-      loadPostsIndex(),
-      loadRoutesManifest(),
-    ])
 
     if (postId === "new") {
+      const settings = await loadSettings()
       const today = new Date().toISOString().slice(0, 10)
+
       return {
         mode: "new" as const,
         settings,
         existing: null,
         initial: {
-          id: `post_${crypto.randomUUID().slice(0, 8)}`,
+          id: `${crypto.randomUUID()}`,
           title: "",
           slug: "",
           date: today,
-          status: "draft",
+          status: "draft" as const,
           excerpt: "",
           tags: [] as string[],
           categories: [] as string[],
@@ -43,7 +40,12 @@ export const Route = createFileRoute("/admin/posts/$postId")({
       }
     }
 
-    // existing
+    const [settings, index, manifest] = await Promise.all([
+      loadSettings(),
+      loadPostsIndex(),
+      loadRoutesManifest(),
+    ])
+
     const postMeta = index.posts.find((p) => p.id === postId)
     if (!postMeta) {
       return {
@@ -72,7 +74,7 @@ export const Route = createFileRoute("/admin/posts/$postId")({
       settings,
       existing: postMeta,
       initial: {
-        ...parsed.frontmatter,
+        ...(parsed.frontmatter as any),
         body: parsed.body,
       },
     }
@@ -95,36 +97,61 @@ type Draft = {
   body: string
 }
 
-const DRAFTS_KEY = "bloghub.postDrafts.v1"
-
-function loadLocalDraft(postId: string): Draft | null {
-  try {
-    const raw = localStorage.getItem(DRAFTS_KEY)
-    if (!raw) return null
-    const map = JSON.parse(raw) as Record<string, Draft>
-    return map[postId] ?? null
-  } catch {
-    return null
-  }
+function shortId(id: string): string {
+  return (id || "").replace(/[^a-zA-Z0-9]/g, "").slice(0, 8) || "untitled"
 }
 
-function saveLocalDraft(postId: string, draft: Draft) {
-  const map: Record<string, Draft> = (() => {
-    try {
-      const raw = localStorage.getItem(DRAFTS_KEY)
-      return raw ? (JSON.parse(raw) as Record<string, Draft>) : {}
-    } catch {
-      return {}
-    }
-  })()
+function slugifyTitle(input: string): string {
+  return input
+    .trim()
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .replace(/-+/g, "-")
+}
 
-  map[postId] = draft
-  localStorage.setItem(DRAFTS_KEY, JSON.stringify(map))
+function ensureTitleAndSlug(draft: Draft): Draft {
+  let next = { ...draft }
+  const sid = shortId(next.id)
+
+  if (!next.title?.trim()) {
+    next.title = `Untitle - ${sid}`
+  }
+
+  if (!next.slug?.trim()) {
+    const base = slugifyTitle(next.title)
+    next.slug = base || `untitle-${sid}`
+  }
+
+  return next
+}
+
+function deepEqualDraft(a: Draft, b: Draft): boolean {
+  // stable stringify: order keys by building a normalized object
+  const norm = (d: Draft) => ({
+    id: d.id,
+    title: d.title,
+    slug: d.slug,
+    date: d.date,
+    status: d.status,
+    excerpt: d.excerpt ?? "",
+    tags: d.tags ?? [],
+    categories: d.categories ?? [],
+    seo_title: d.seo_title ?? "",
+    seo_description: d.seo_description ?? "",
+    seo_image: d.seo_image ?? "",
+    body: d.body ?? "",
+  })
+
+  return JSON.stringify(norm(a)) === JSON.stringify(norm(b))
 }
 
 function AdminPostEditorPage() {
   const data = Route.useLoaderData()
   const postId = Route.useParams().postId
+  const navigate = useNavigate()
 
   if (data.mode === "missing") {
     return (
@@ -137,23 +164,45 @@ function AdminPostEditorPage() {
     )
   }
 
-  const initial = data.initial as any
+  const initial = data.initial as Draft
 
-  const [draft, setDraft] = React.useState<Draft>(() => {
-    const local = loadLocalDraft(postId)
-    return (local ?? initial) as Draft
-  })
+  const [draft, setDraft] = React.useState<Draft>(() => initial)
 
   React.useEffect(() => {
-    // if user navigates to another post id, reset state
-    const local = loadLocalDraft(postId)
-    setDraft((local ?? initial) as Draft)
+    setDraft(initial)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [postId])
 
+  // Track "last saved/published" snapshot so we can warn on navigation/close
+  const lastSavedRef = React.useRef<Draft>(initial)
+  React.useEffect(() => {
+    lastSavedRef.current = initial
+  }, [initial])
+
+  const isDirty = !deepEqualDraft(draft, lastSavedRef.current)
+
+  // Warn on tab close / refresh
+  React.useEffect(() => {
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (!isDirty) return
+      e.preventDefault()
+      // Chrome requires returnValue to be set
+      e.returnValue = ""
+    }
+    window.addEventListener("beforeunload", onBeforeUnload)
+    return () => window.removeEventListener("beforeunload", onBeforeUnload)
+  }, [isDirty])
+
+  // Helper: confirm leaving this page
+  function confirmLeave(): boolean {
+    if (!isDirty) return true
+    return window.confirm(
+      "You have unsaved/unpublished changes. If you leave now, you will lose them."
+    )
+  }
+
   const resolvedUrl = React.useMemo(() => {
     try {
-      // If resolvePostPermalink is not importable, we’ll replace it next step.
       return resolvePostPermalink(
         {
           id: draft.id,
@@ -168,7 +217,6 @@ function AdminPostEditorPage() {
         data.settings as any
       )
     } catch {
-      // fallback
       const slug = draft.slug?.trim() || "untitled"
       return `/${slug}/`
     }
@@ -186,7 +234,14 @@ function AdminPostEditorPage() {
     setDraft((prev) => ({ ...prev, [key]: arr }))
   }
 
-  const canPreview = Boolean(draft.slug?.trim())
+  function normalizeNewDraftIfNeeded(): Draft {
+    if (postId !== "new") return draft
+    const normalized = ensureTitleAndSlug(draft)
+    setDraft(normalized)
+    return normalized
+  }
+
+  const publishLabel = draft.status === "draft" ? "Save as Draft" : "Publish"
 
   return (
     <div className="max-w-6xl space-y-6">
@@ -201,43 +256,60 @@ function AdminPostEditorPage() {
         </div>
 
         <div className="flex flex-wrap gap-2 justify-end">
-          <Link to="/admin/posts" className="rounded-md border px-3 py-2 text-sm bg-white">
-            Back
-          </Link>
-
+          {/* Back with unsaved-changes confirmation */}
           <button
+            type="button"
             className="rounded-md border px-3 py-2 text-sm bg-white"
             onClick={() => {
-              saveLocalDraft(postId, draft)
-              alert("Draft saved locally.")
+              if (!confirmLeave()) return
+              navigate({ to: "/admin/posts" })
             }}
           >
-            Save draft
+            Back
           </button>
 
           <button
             className="rounded-md border px-3 py-2 text-sm bg-white"
-            disabled={!canPreview}
             onClick={() => {
-              // Ensure preview settings exist (so theme + site settings match what admin is editing)
+              const d = normalizeNewDraftIfNeeded()
+
               writePreviewSettings(data.settings as any)
 
-              // Write draft post for preview
+              const previewUrl = (() => {
+                try {
+                  return resolvePostPermalink(
+                    {
+                      id: d.id,
+                      title: d.title,
+                      slug: d.slug,
+                      date: d.date,
+                      status: d.status,
+                      excerpt: d.excerpt,
+                      tags: d.tags,
+                      categories: d.categories,
+                    } as any,
+                    data.settings as any
+                  )
+                } catch {
+                  const slug = d.slug?.trim() || "untitled"
+                  return `/${slug}/`
+                }
+              })()
+
               writePreviewPostDraft({
-                id: postId === "new" ? draft.id : postId,
-                frontmatter: {
-                  ...draft,
-                },
-                body: draft.body,
-                url: resolvedUrl,
+                id: postId === "new" ? d.id : postId,
+                frontmatter: { ...d },
+                body: d.body,
+                url: previewUrl,
                 updatedAt: new Date().toISOString(),
               })
 
               const base = import.meta.env.BASE_URL || "/"
               window.open(
-                `${window.location.origin}${base}${resolvedUrl.replace(/^\//, "")}?preview=true&postPreview=${
-                  postId === "new" ? draft.id : postId
-                }`,
+                `${window.location.origin}${base}${previewUrl.replace(
+                  /^\//,
+                  ""
+                )}?preview=true&postPreview=${postId === "new" ? d.id : postId}`,
                 "_blank"
               )
             }}
@@ -248,16 +320,23 @@ function AdminPostEditorPage() {
           <button
             className="rounded-md border px-3 py-2 text-sm bg-neutral-900 text-white border-neutral-900"
             onClick={() => {
-              // placeholder for GitHub commit later
-              const file = buildMarkdownFile(draft)
-              console.log("PUBLISH FILE:\n", file)
-              alert("Publish: TODO (will commit .md to GitHub later).")
+              const d = normalizeNewDraftIfNeeded()
+
+              // "Save as Draft"/"Publish" currently just builds the markdown file.
+              // Mark as saved so leaving won't warn (since user explicitly "saved/published").
+              const file = buildMarkdownFile(d)
+              console.log(`${publishLabel.toUpperCase()} FILE:\n`, file)
+
+              lastSavedRef.current = d
+              setDraft(d) // keep state aligned
+              alert(`${publishLabel}: TODO (will commit .md to GitHub later).`)
             }}
           >
-            Publish
+            {publishLabel}
           </button>
         </div>
       </header>
+
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Main editor */}
         <section className="lg:col-span-8 space-y-4">
@@ -275,7 +354,6 @@ function AdminPostEditorPage() {
                 value={draft.body}
                 onChange={(v) => update("body", v)}
                 onInsertImage={(placeholderPath) => {
-                  // MVP: just inserts a markdown image reference (later uploads/commits)
                   const text = `\n\n![alt](${placeholderPath})\n\n`
                   update("body", draft.body + text)
                 }}
@@ -334,7 +412,10 @@ function AdminPostEditorPage() {
               />
             </FormField>
 
-            <FormField label="Categories" hint='Comma-separated. Example: "general, tech"'>
+            <FormField
+              label="Categories"
+              hint='Comma-separated. Example: "general, tech"'
+            >
               <input
                 className="w-full rounded-md border px-3 py-2 text-sm"
                 value={(draft.categories ?? []).join(", ")}
@@ -356,7 +437,7 @@ function AdminPostEditorPage() {
 
             <FormField label="SEO description">
               <textarea
-                className="w-full rounded-md border px-3 py-2 text-sm"
+                className="rounded-md border px-3 py-2 text-sm w-full"
                 rows={3}
                 value={draft.seo_description ?? ""}
                 onChange={(e) => update("seo_description", e.target.value)}

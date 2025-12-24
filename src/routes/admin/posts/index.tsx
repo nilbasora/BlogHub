@@ -21,7 +21,7 @@ function AdminPostsPage() {
         <div className="space-y-1">
           <h1 className="text-2xl font-semibold">Blog posts</h1>
           <p className="text-sm opacity-80">
-            Create, edit and publish posts. (GitHub commit wiring comes next.)
+            Create, edit and publish posts.
           </p>
         </div>
 

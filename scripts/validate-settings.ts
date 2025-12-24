@@ -1,18 +1,11 @@
 import fs from "node:fs"
 import path from "node:path"
 import { pathToFileURL } from "node:url"
+import { SiteSettings } from "@/core/content/types.js"
 
 const ROOT = process.cwd()
 const SETTINGS_PATH = path.join(ROOT, "content", "site", "settings.json")
 const THEMES_DIR = path.join(ROOT, "src", "themes")
-
-type SiteSettings = {
-  siteName: string
-  tagline?: string
-  siteUrl?: string
-  permalinks: { post: string }
-  theme: { active: string; vars?: unknown }
-}
 
 type ThemeField =
   | { key: string; label: string; type: "string"; default: string }
