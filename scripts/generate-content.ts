@@ -8,14 +8,13 @@ import {
   PostFrontmatter,
   PostsIndex,
   RoutesManifest,
-} from "./types"
+} from "@/core/utils/types"
 import { resolvePostPermalink } from "./permalink"
 import { buildSearchText } from "./utils"
 
 const ROOT = process.cwd()
-const CONTENT_DIR = path.join(ROOT, "public")
-const POSTS_DIR = path.join(CONTENT_DIR, "posts")
-const GENERATED_DIR = path.join(CONTENT_DIR, "generated")
+const POSTS_DIR = path.join(ROOT, "posts")
+const GENERATED_DIR = path.join(ROOT, "generated")
 const GENERATED_POSTS_DIR = path.join(GENERATED_DIR, "posts")
 
 function readJson<T>(filePath: string): T {
