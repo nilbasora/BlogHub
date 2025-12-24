@@ -1,5 +1,5 @@
-import { githubFetch } from "./api"
-import { getRepoRef } from "./repo"
+// @/core/github/deploy.ts
+import { configuredRepoRequest, GitHubApiError } from "./client"
 
 type MergeResponse = {
   sha: string
@@ -8,11 +8,8 @@ type MergeResponse = {
 }
 
 export async function deployDevelopToMain() {
-  const { owner, repo } = getRepoRef()
-
   try {
-    // Merge develop -> main
-    return await githubFetch<MergeResponse>(`/repos/${owner}/${repo}/merges`, {
+    return await configuredRepoRequest<MergeResponse>(`/merges`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -21,17 +18,12 @@ export async function deployDevelopToMain() {
         commit_message: "chore: deploy develop to main",
       }),
     })
-  } catch (e: any) {
-    // GithubFetch wraps errors, but message includes status+body.
-    // Merge conflicts usually return 409.
-    const msg = String(e?.message ?? e)
-
-    if (msg.includes("(409)")) {
+  } catch (e) {
+    if (e instanceof GitHubApiError && e.status === 409) {
       throw new Error(
         "Deploy failed: merging 'develop' into 'main' causes conflicts. Please resolve conflicts on GitHub first."
       )
     }
-
     throw e
   }
 }

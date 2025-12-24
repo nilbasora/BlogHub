@@ -1,6 +1,7 @@
+// @/core/github/useViewer.ts
 import * as React from "react"
-import type { GithubUser } from "./api"
-import { fetchViewer } from "./api"
+import type { GithubUser } from "./viewer"
+import { fetchViewer } from "./viewer"
 
 let cached: GithubUser | null = null
 
@@ -38,7 +39,6 @@ export function useViewer() {
   return { user, loading, error }
 }
 
-// optional: clear cache on logout
 export function clearViewerCache() {
   cached = null
 }
