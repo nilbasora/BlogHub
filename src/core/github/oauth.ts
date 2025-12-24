@@ -1,59 +1,36 @@
 import { getRepoRef } from "./repo"
 
-const AUTHORIZE_URL = "https://github.com/login/oauth/authorize"
-const TOKEN_URL = "https://github.com/login/oauth/access_token"
-const DEVICE_CODE_URL = "https://github.com/login/device/code"
 const API = "https://api.github.com"
 
+// We now use a GitHub Personal Access Token (PAT) stored locally
 const TOKEN_KEY = "bloghub.githubToken"
-const VERIFIER_KEY = "bloghub.pkce.verifier"
-const STATE_KEY = "bloghub.pkce.state"
 const NEXT_KEY = "bloghub.loginNext"
 const LOGIN_ERROR_KEY = "bloghub.loginError"
 
-// DEV bypass token
-const DEV_BYPASS_TOKEN = "__DEV_BYPASS__"
-
-function randomString(len = 64) {
-  const chars =
-    "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-._~"
-  const bytes = crypto.getRandomValues(new Uint8Array(len))
-  let out = ""
-  for (let i = 0; i < bytes.length; i++) out += chars[bytes[i] % chars.length]
-  return out
-}
-
-async function sha256(input: string) {
-  const data = new TextEncoder().encode(input)
-  const digest = await crypto.subtle.digest("SHA-256", data)
-  return new Uint8Array(digest)
-}
-
-function base64Url(bytes: Uint8Array) {
-  let s = ""
-  for (const b of bytes) s += String.fromCharCode(b)
-  return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "")
-}
-
-async function challengeFromVerifier(verifier: string) {
-  return base64Url(await sha256(verifier))
-}
+/* ------------------------------------------------------------------ */
+/* Token storage                                                      */
+/* ------------------------------------------------------------------ */
 
 export function getGithubToken(): string | null {
   try {
-    return localStorage.getItem(TOKEN_KEY)
+    const t = localStorage.getItem(TOKEN_KEY)
+    return t ? t.trim() : null
   } catch {
     return null
   }
 }
 
 export function setGithubToken(token: string) {
-  localStorage.setItem(TOKEN_KEY, token)
+  localStorage.setItem(TOKEN_KEY, token.trim())
 }
 
 export function clearGithubToken() {
   localStorage.removeItem(TOKEN_KEY)
 }
+
+/* ------------------------------------------------------------------ */
+/* Login navigation + error helpers                                   */
+/* ------------------------------------------------------------------ */
 
 export function readLoginNext() {
   return localStorage.getItem(NEXT_KEY) || "/admin/"
@@ -76,198 +53,52 @@ export function clearLoginError() {
 }
 
 /* ------------------------------------------------------------------ */
-/* Redirect PKCE flow (kept but unused)                                */
+/* PAT "login" (no OAuth / device flow)                               */
 /* ------------------------------------------------------------------ */
 
-export function getRedirectUri() {
-  const base = window.location.origin
-  const viteBase = import.meta.env.BASE_URL || "/"
-  const prefix = viteBase.endsWith("/") ? viteBase.slice(0, -1) : viteBase
-  return `${base}${prefix}/login/callback`
+export function normalizePat(input: string) {
+  return input.trim()
 }
 
-export async function startGithubLogin(next = "/admin/") {
-  if (import.meta.env.DEV) {
-    setGithubToken(DEV_BYPASS_TOKEN)
-    localStorage.setItem(NEXT_KEY, next)
-    window.location.href = next
-    return
-  }
-
-  const clientId = import.meta.env.VITE_GITHUB_CLIENT_ID
-  if (!clientId) throw new Error("Missing VITE_GITHUB_CLIENT_ID")
-
-  const verifier = randomString(64)
-  const challenge = await challengeFromVerifier(verifier)
-  const state = randomString(24)
-
-  localStorage.setItem(VERIFIER_KEY, verifier)
-  localStorage.setItem(STATE_KEY, state)
-  localStorage.setItem(NEXT_KEY, next)
-
-  const params = new URLSearchParams({
-    client_id: clientId,
-    redirect_uri: getRedirectUri(),
-    scope: "repo",
-    state,
-    code_challenge: challenge,
-    code_challenge_method: "S256",
-  })
-
-  window.location.href = `${AUTHORIZE_URL}?${params.toString()}`
-}
-
-export async function exchangeCodeForToken(code: string, state: string) {
-  const clientId = import.meta.env.VITE_GITHUB_CLIENT_ID
-  if (!clientId) throw new Error("Missing VITE_GITHUB_CLIENT_ID")
-
-  const expectedState = localStorage.getItem(STATE_KEY)
-  if (!expectedState || expectedState !== state)
-    throw new Error("Invalid OAuth state")
-
-  const verifier = localStorage.getItem(VERIFIER_KEY)
-  if (!verifier) throw new Error("Missing PKCE verifier")
-
-  const body = new URLSearchParams({
-    client_id: clientId,
-    code,
-    redirect_uri: getRedirectUri(),
-    code_verifier: verifier,
-  })
-
-  const res = await fetch(TOKEN_URL, {
-    method: "POST",
-    headers: {
-      Accept: "application/json",
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
-    body,
-  })
-
-  const data = (await res.json()) as any
-  if (!res.ok || !data?.access_token)
-    throw new Error(data?.error_description || "Token exchange failed")
-
-  localStorage.removeItem(VERIFIER_KEY)
-  localStorage.removeItem(STATE_KEY)
-
-  return String(data.access_token)
-}
 
 /* ------------------------------------------------------------------ */
-/* Device Flow (USED)                                                  */
+/* GitHub fetch helper (optional but handy)                           */
 /* ------------------------------------------------------------------ */
 
-export type DeviceSession = {
-  device_code: string
-  user_code: string
-  verification_uri: string
-  expires_in: number
-  interval: number
-}
+export async function githubFetch(
+  url: string,
+  init: RequestInit = {},
+  token?: string
+) {
+  const t = token ?? getGithubToken()
+  if (!t) throw new Error("Not authenticated (missing GitHub token).")
 
-export async function startGithubLoginDevice(next = "/admin/") {
-  if (import.meta.env.DEV) {
-    setGithubToken(DEV_BYPASS_TOKEN)
-    localStorage.setItem(NEXT_KEY, next)
-    return {
-      device_code: "DEV",
-      user_code: "DEV",
-      verification_uri: "about:blank",
-      expires_in: 900,
-      interval: 5,
+  const headers = new Headers(init.headers)
+  // For PATs, GitHub accepts Bearer; token also works, but Bearer is fine.
+  headers.set("Authorization", `Bearer ${t}`)
+  headers.set("Accept", "application/vnd.github+json")
+
+  const res = await fetch(url, { ...init, headers })
+
+  // Provide a clearer error for debugging
+  if (!res.ok) {
+    let body: any = null
+    try {
+      body = await res.json()
+    } catch {
+      // ignore
     }
+    const msg =
+      body?.message ||
+      body?.error_description ||
+      `GitHub API error (${res.status})`
+    const err: any = new Error(msg)
+    err.status = res.status
+    err.body = body
+    throw err
   }
 
-  localStorage.setItem(NEXT_KEY, next)
-
-  const clientId = import.meta.env.VITE_GITHUB_CLIENT_ID
-  if (!clientId) throw new Error("Missing VITE_GITHUB_CLIENT_ID")
-
-  const body = new URLSearchParams({
-    client_id: clientId,
-    scope: "repo",
-  })
-
-  const res = await fetch(DEVICE_CODE_URL, {
-    method: "POST",
-    headers: {
-      Accept: "application/json",
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
-    body,
-  })
-
-  const data = (await res.json()) as any
-  if (!res.ok)
-    throw new Error(data?.error_description || "Device flow start failed")
-
-  return {
-    device_code: String(data.device_code),
-    user_code: String(data.user_code),
-    verification_uri: String(data.verification_uri),
-    expires_in: Number(data.expires_in),
-    interval: Number(data.interval),
-  }
-}
-
-export async function pollDeviceFlowToken(opts: {
-  device_code: string
-  interval: number
-  expires_in: number
-  onUpdate?: (msg: string) => void
-  isCancelled?: () => boolean
-}) {
-  if (import.meta.env.DEV) return DEV_BYPASS_TOKEN
-
-  const clientId = import.meta.env.VITE_GITHUB_CLIENT_ID
-  if (!clientId) throw new Error("Missing VITE_GITHUB_CLIENT_ID")
-
-  const start = Date.now()
-  let intervalMs = Math.max(1, opts.interval) * 1000
-
-  const sleep = (ms: number) =>
-    new Promise<void>((r) => setTimeout(r, ms))
-
-  while (true) {
-    if (opts.isCancelled?.()) throw new Error("Login cancelled")
-
-    if ((Date.now() - start) / 1000 > opts.expires_in)
-      throw new Error("Login expired")
-
-    const body = new URLSearchParams({
-      client_id: clientId,
-      device_code: opts.device_code,
-      grant_type: "urn:ietf:params:oauth:grant-type:device_code",
-    })
-
-    const res = await fetch(TOKEN_URL, {
-      method: "POST",
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body,
-    })
-
-    const data = (await res.json()) as any
-
-    if (data?.access_token) return String(data.access_token)
-
-    if (data?.error === "authorization_pending") {
-      opts.onUpdate?.("Waiting for GitHub authorization…")
-      await sleep(intervalMs)
-      continue
-    }
-
-    if (data?.error === "slow_down") {
-      intervalMs += 5000
-      await sleep(intervalMs)
-      continue
-    }
-
-    throw new Error(data?.error_description || data?.error || "Login failed")
-  }
+  return res
 }
 
 /* ------------------------------------------------------------------ */
@@ -275,25 +106,36 @@ export async function pollDeviceFlowToken(opts: {
 /* ------------------------------------------------------------------ */
 
 export async function validateTokenForRepo(token: string) {
-  if (import.meta.env.DEV && token === DEV_BYPASS_TOKEN) return true
+  const pat = token.trim()
+  if (!pat) throw new Error("Missing GitHub token.")
 
   const { owner, repo } = getRepoRef()
 
   const res = await fetch(`${API}/repos/${owner}/${repo}`, {
     headers: {
-      Authorization: `Bearer ${token}`,
+      Authorization: `Bearer ${pat}`,
       Accept: "application/vnd.github+json",
     },
   })
 
-  if (!res.ok) throw new Error("Token has no access to configured repo")
+  if (!res.ok) {
+    // Try to show GitHub's message (e.g. Bad credentials)
+    let data: any = null
+    try {
+      data = await res.json()
+    } catch {
+      // ignore
+    }
+    throw new Error(data?.message || "Token has no access to configured repo")
+  }
 
   const data = (await res.json()) as any
   const perms = data?.permissions
   const canWrite = Boolean(perms?.push || perms?.admin)
 
-  if (!canWrite)
+  if (!canWrite) {
     throw new Error("Token does not have write permissions to repo")
+  }
 
   return true
 }
