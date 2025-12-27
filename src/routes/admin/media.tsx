@@ -1,21 +1,19 @@
 import * as React from "react"
 import { createFileRoute } from "@tanstack/react-router"
 import { FormField } from "@/components/admin/FormField"
-import { ConfirmDialog } from "@/components/admin/ConfirmDialog" // use whichever path you actually have
-import { loadMediaIndex } from "@/core/media/loadMediaIndex"
-import { loadMediaUsage } from "@/core/media/loadMediaUsage"
-import type { MediaRow, MediaType } from "@/core/utils/types"
-import {
-  addDraftMedia,
-  clearMediaDraft,
-  getMediaDraftState,
-  stageDeleteMedia,
-} from "@/core/media/mediaDraftStore"
+import { ConfirmDialog } from "@/components/admin/ConfirmDialog"
+
+import type { MediaIndex, MediaIndexItem, MediaType } from "@/core/utils/types"
+
+import { loadMediaIndexFromRepo } from "@/core/media/loadMediaIndexFromRepo"
+import { commitMediaFile, deleteMediaFile } from "@/core/github/commit"
+
+const BRANCH = "develop"
 
 export const Route = createFileRoute("/admin/media")({
   loader: async () => {
-    const [idx, usage] = await Promise.all([loadMediaIndex(), loadMediaUsage()])
-    return { idx, usage }
+    const idx = await loadMediaIndexFromRepo(BRANCH)
+    return { idx }
   },
   component: AdminMediaPage,
 })
@@ -28,8 +26,21 @@ function guessTypeByName(name: string): MediaType {
   return "other"
 }
 
+function newMediaId(): string {
+  return crypto.randomUUID()
+}
+
+function formatBytes(bytes?: number): string | null {
+  if (typeof bytes !== "number" || Number.isNaN(bytes)) return null
+  if (bytes < 1024) return `${bytes} B`
+  const kb = bytes / 1024
+  if (kb < 1024) return `${Math.round(kb)} KB`
+  const mb = kb / 1024
+  return `${mb.toFixed(1)} MB`
+}
+
 function AdminMediaPage() {
-  const { idx, usage } = Route.useLoaderData()
+  const { idx } = Route.useLoaderData() as { idx: MediaIndex }
 
   const [query, setQuery] = React.useState("")
   const [typeFilter, setTypeFilter] = React.useState<MediaType | "all">("all")
@@ -40,66 +51,170 @@ function AdminMediaPage() {
     usedBy: string[]
   }>({ open: false, path: null, usedBy: [] })
 
-  const [refreshKey, setRefreshKey] = React.useState(0)
+  // Local mirror so uploads/deletes show instantly
+  const [items, setItems] = React.useState<MediaIndexItem[]>(() =>
+    (idx.items ?? []).map((it) => ({ ...it, usedBy: it.usedBy ?? [] }))
+  )
 
-  // merge repo index + local staged changes
-  const rows: MediaRow[] = React.useMemo(() => {
-    const draft = getMediaDraftState()
+  React.useEffect(() => {
+    setItems((idx.items ?? []).map((it) => ({ ...it, usedBy: it.usedBy ?? [] })))
+  }, [idx])
 
-    const base = idx.items
-      .filter((it) => !draft.deletedPaths.includes(it.path))
-      .map((it) => ({
-        ...it,
-        usedBy: usage.usage[it.path] ?? [],
-      }))
+  const [busyPaths, setBusyPaths] = React.useState<Record<string, boolean>>({})
+  const [isUploading, setIsUploading] = React.useState(false)
 
-    const added = draft.added.map((it) => ({
-      ...it,
-      usedBy: usage.usage[it.path] ?? [],
-    }))
+  // Drag & drop UI state
+  const [isDragOver, setIsDragOver] = React.useState(false)
+  const dragDepthRef = React.useRef(0)
 
-    const all = [...added, ...base]
+  function setBusy(path: string, v: boolean) {
+    setBusyPaths((prev) => ({ ...prev, [path]: v }))
+  }
 
+  const rows: MediaIndexItem[] = React.useMemo(() => {
     const q = query.trim().toLowerCase()
-    return all
+    return (items ?? [])
       .filter((r) => (typeFilter === "all" ? true : r.type === typeFilter))
       .filter((r) => (q ? r.path.toLowerCase().includes(q) : true))
       .sort((a, b) => (a.path < b.path ? -1 : 1))
-  }, [idx.items, usage.usage, query, typeFilter, refreshKey])
+  }, [items, query, typeFilter])
 
-  function handleUpload(files: FileList | null) {
+  async function uploadFiles(fileList: FileList | File[]) {
+    const files = Array.isArray(fileList) ? fileList : Array.from(fileList)
+    if (files.length === 0) return
+
+    setIsUploading(true)
+    try {
+      for (const f of files) {
+        const safeName = f.name.replace(/\s+/g, "-")
+        const path = `/media/${safeName}`
+
+        const optimistic: MediaIndexItem = {
+          id: newMediaId(),
+          path,
+          type: guessTypeByName(safeName),
+          usedBy: [],
+          size: f.size,
+          createdAt: new Date().toISOString().slice(0, 10),
+        }
+
+        // optimistic add/replace
+        setItems((prev) => {
+          const without = prev.filter((it) => it.path !== path)
+          return [optimistic, ...without].sort((a, b) => (a.path < b.path ? -1 : 1))
+        })
+
+        setBusy(path, true)
+        try {
+          await commitMediaFile({
+            publicPath: path,
+            file: f,
+            message: `chore: upload media ${path}`,
+          })
+        } catch (err) {
+          // revert
+          setItems((prev) => prev.filter((it) => it.path !== path))
+          throw err
+        } finally {
+          setBusy(path, false)
+        }
+      }
+
+      alert(
+        "Upload committed to GitHub ✅\nNote: media-index.json updates after your generator runs."
+      )
+    } catch (err: any) {
+      console.error(err)
+      alert(`Upload failed.\n\n${err?.message || err}`)
+    } finally {
+      setIsUploading(false)
+      const input = document.getElementById("media-upload-input") as HTMLInputElement | null
+      if (input) input.value = ""
+    }
+  }
+
+  function handleFileInput(files: FileList | null) {
     if (!files || files.length === 0) return
+    void uploadFiles(files)
+  }
 
-    // For now: stage entries using /media/<filename>.
-    // Later: we’ll upload the binaries to GitHub repo and commit.
-    Array.from(files).forEach((f) => {
-      const safeName = f.name.replace(/\s+/g, "-")
-      const path = `/media/${safeName}`
-      addDraftMedia({
-        path,
-        type: guessTypeByName(safeName),
-        createdAt: new Date().toISOString().slice(0, 10),
-      })
-    })
+  // Drag & drop handlers
+  function onDragEnter(e: React.DragEvent) {
+    e.preventDefault()
+    e.stopPropagation()
+    dragDepthRef.current += 1
+    setIsDragOver(true)
+  }
 
-    setRefreshKey((k) => k + 1)
-    alert("Staged upload locally. (Next step: commit to GitHub repo.)")
+  function onDragOver(e: React.DragEvent) {
+    e.preventDefault()
+    e.stopPropagation()
+    // Needed so drop works
+    e.dataTransfer.dropEffect = "copy"
+    setIsDragOver(true)
+  }
+
+  function onDragLeave(e: React.DragEvent) {
+    e.preventDefault()
+    e.stopPropagation()
+    dragDepthRef.current -= 1
+    if (dragDepthRef.current <= 0) {
+      dragDepthRef.current = 0
+      setIsDragOver(false)
+    }
+  }
+
+  function onDrop(e: React.DragEvent) {
+    e.preventDefault()
+    e.stopPropagation()
+    dragDepthRef.current = 0
+    setIsDragOver(false)
+
+    if (isUploading) return
+    const files = e.dataTransfer.files
+    if (!files || files.length === 0) return
+    void uploadFiles(files)
   }
 
   function requestDelete(path: string, usedBy: string[]) {
-    if (usedBy.length > 0) {
+    if ((usedBy ?? []).length > 0) {
       setConfirm({ open: true, path, usedBy })
       return
     }
-    stageDeleteMedia(path)
-    setRefreshKey((k) => k + 1)
+    void doDelete(path)
+  }
+
+  async function doDelete(path: string) {
+    if (!path) return
+
+    const prevItem = items.find((it) => it.path === path) || null
+    setItems((prev) => prev.filter((it) => it.path !== path))
+
+    setBusy(path, true)
+    try {
+      await deleteMediaFile(path)
+      alert(
+        `Deleted & committed ✅\n${path}\n\nNote: media-index.json updates after your generator runs.`
+      )
+    } catch (err: any) {
+      console.error(err)
+      if (prevItem) {
+        setItems((prev) => {
+          const next = [prevItem, ...prev]
+          return next.sort((a, b) => (a.path < b.path ? -1 : 1))
+        })
+      }
+      alert(`Delete failed.\n\n${err?.message || err}`)
+    } finally {
+      setBusy(path, false)
+    }
   }
 
   async function confirmDelete() {
     if (!confirm.path) return
-    stageDeleteMedia(confirm.path)
+    const path = confirm.path
     setConfirm({ open: false, path: null, usedBy: [] })
-    setRefreshKey((k) => k + 1)
+    await doDelete(path)
   }
 
   function copyMarkdown(path: string) {
@@ -109,7 +224,13 @@ function AdminMediaPage() {
   }
 
   return (
-    <div className="max-w-6xl space-y-6">
+    <div
+      className="max-w-6xl space-y-6"
+      onDragEnter={onDragEnter}
+      onDragOver={onDragOver}
+      onDragLeave={onDragLeave}
+      onDrop={onDrop}
+    >
       <header className="flex items-start justify-between gap-4">
         <div className="space-y-1">
           <h1 className="text-2xl font-semibold">Media</h1>
@@ -122,25 +243,31 @@ function AdminMediaPage() {
           <label className="rounded-md border px-3 py-2 text-sm bg-white hover:bg-neutral-50 cursor-pointer">
             Upload
             <input
+              id="media-upload-input"
               type="file"
               className="hidden"
               multiple
-              onChange={(e) => handleUpload(e.target.files)}
+              onChange={(e) => handleFileInput(e.target.files)}
+              disabled={isUploading}
             />
           </label>
-
-          <button
-            className="rounded-md border px-3 py-2 text-sm bg-white"
-            onClick={() => {
-              clearMediaDraft()
-              setRefreshKey((k) => k + 1)
-              alert("Local media draft cleared.")
-            }}
-          >
-            Clear local draft
-          </button>
         </div>
       </header>
+
+      {/* Drag overlay */}
+      {isDragOver ? (
+        <div className="fixed inset-0 z-50 pointer-events-none">
+          <div className="absolute inset-0 bg-black/30" />
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="pointer-events-none rounded-2xl border border-dashed bg-white/90 px-10 py-8 text-center shadow-lg">
+              <div className="text-lg font-semibold">Drop files to upload</div>
+              <div className="text-sm opacity-70 mt-1">
+                They will be committed to GitHub immediately.
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       <section className="rounded-lg border bg-white p-5 space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
@@ -171,6 +298,12 @@ function AdminMediaPage() {
             </FormField>
           </div>
         </div>
+
+        {isUploading ? (
+          <div className="text-xs opacity-70">
+            Uploading/committing… (you can keep browsing)
+          </div>
+        ) : null}
       </section>
 
       <section className="rounded-lg border bg-white overflow-hidden">
@@ -184,58 +317,68 @@ function AdminMediaPage() {
         {rows.length === 0 ? (
           <div className="p-4 text-sm opacity-70">No media found.</div>
         ) : (
-          rows.map((m) => (
-            <div
-              key={m.path}
-              className="grid grid-cols-12 gap-3 px-4 py-3 text-sm border-b last:border-b-0"
-            >
-              <div className="col-span-7 min-w-0">
-                <div className="font-mono text-xs break-all">{m.path}</div>
-                {m.createdAt ? (
-                  <div className="text-xs opacity-60">Added: {m.createdAt}</div>
-                ) : null}
-              </div>
+          rows.map((m) => {
+            const usedBy = m.usedBy ?? []
+            const busy = !!busyPaths[m.path]
+            const sizeLabel = formatBytes(m.size)
 
-              <div className="col-span-2">
-                <span className="rounded border px-2 py-0.5 text-xs">{m.type}</span>
-              </div>
+            return (
+              <div
+                key={m.id || m.path}
+                className="grid grid-cols-12 gap-3 px-4 py-3 text-sm border-b last:border-b-0"
+              >
+                <div className="col-span-7 min-w-0">
+                  <div className="font-mono text-xs break-all">{m.path}</div>
+                  <div className="text-xs opacity-60 flex flex-wrap gap-x-3 gap-y-1">
+                    {m.createdAt ? <span>Added: {m.createdAt}</span> : null}
+                    {sizeLabel ? <span>Size: {sizeLabel}</span> : null}
+                    {busy ? <span className="opacity-80">Working…</span> : null}
+                  </div>
+                </div>
 
-              <div className="col-span-2">
-                {m.usedBy.length === 0 ? (
-                  <span className="text-xs opacity-70">—</span>
-                ) : (
-                  <details className="text-xs">
-                    <summary className="cursor-pointer underline">
-                      {m.usedBy.length} post(s)
-                    </summary>
-                    <div className="mt-2 space-y-1">
-                      {m.usedBy.map((pid) => (
-                        <div key={pid} className="font-mono opacity-80">
-                          {pid}
-                        </div>
-                      ))}
-                    </div>
-                  </details>
-                )}
-              </div>
+                <div className="col-span-2">
+                  <span className="rounded border px-2 py-0.5 text-xs">{m.type}</span>
+                </div>
 
-              <div className="col-span-1 flex justify-end gap-2">
-                <button
-                  className="text-xs underline"
-                  onClick={() => copyMarkdown(m.path)}
-                >
-                  Copy
-                </button>
+                <div className="col-span-2">
+                  {usedBy.length === 0 ? (
+                    <span className="text-xs opacity-70">—</span>
+                  ) : (
+                    <details className="text-xs">
+                      <summary className="cursor-pointer underline">
+                        {usedBy.length} post(s)
+                      </summary>
+                      <div className="mt-2 space-y-1">
+                        {usedBy.map((pid) => (
+                          <div key={pid} className="font-mono opacity-80">
+                            {pid}
+                          </div>
+                        ))}
+                      </div>
+                    </details>
+                  )}
+                </div>
 
-                <button
-                  className="text-xs underline text-red-700"
-                  onClick={() => requestDelete(m.path, m.usedBy)}
-                >
-                  Delete
-                </button>
+                <div className="col-span-1 flex justify-end gap-2">
+                  <button
+                    className="text-xs underline disabled:opacity-50"
+                    onClick={() => copyMarkdown(m.path)}
+                    disabled={busy}
+                  >
+                    Copy
+                  </button>
+
+                  <button
+                    className="text-xs underline text-red-700 disabled:opacity-50"
+                    onClick={() => requestDelete(m.path, usedBy)}
+                    disabled={busy}
+                  >
+                    Delete
+                  </button>
+                </div>
               </div>
-            </div>
-          ))
+            )
+          })
         )}
       </section>
 

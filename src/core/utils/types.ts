@@ -94,22 +94,18 @@ export type ParsedMarkdownPost = {
 export type MediaType = "image" | "video" | "gif" | "other"
 
 export type MediaIndexItem = {
+  id: string
   path: string // e.g. "/media/foo.png"
-  type: MediaType
+  type: MediaType,
+  usedBy: string[] // post IDs
+  size?: number // in bytes
+  width?: number
+  height?: number
   createdAt?: ISODateString
 }
 
 export type MediaIndex = GeneratedManifest<number> & {
   items: MediaIndexItem[]
-}
-
-export type MediaUsage = GeneratedManifest<number> & {
-  usage: Record<string, string[]> // path -> [postId...]
-}
-
-// UI model
-export type MediaRow = MediaIndexItem & {
-  usedBy: string[]
 }
 
 // ----------------------------

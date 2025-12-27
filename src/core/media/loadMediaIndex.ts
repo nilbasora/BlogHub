@@ -1,11 +1,8 @@
 import type { MediaIndex } from "@/core/utils/types"
+import { withBase } from "@/core/config/paths"
 
 export async function loadMediaIndex(): Promise<MediaIndex> {
-  try {
-    const res = await fetch("/public/generated/media-index.json", { cache: "no-store" })
-    if (!res.ok) throw new Error("media-index not found")
-    return (await res.json()) as MediaIndex
-  } catch {
-    return { version: 1, generatedAt: new Date().toISOString(), items: [] }
-  }
+  const res = await fetch(withBase("generated/media-index.json"))
+  if (!res.ok) throw new Error("Failed to load media-index.json")
+  return res.json()
 }
