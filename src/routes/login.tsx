@@ -4,14 +4,15 @@ import {
   readLoginError,
   clearLoginError,
   setLoginError,
+  validateTokenForRepo,
+  getGithubToken,
   setGithubToken,
   clearGithubToken,
-  startGithubLoginDevice,
-  pollDeviceFlowToken,
-  validateTokenForRepo,
-  type DeviceSession,
 } from "@/core/github/oauth"
-import { ensureDevelopSyncedWithMain, rollbackDevelop } from "@/core/github/branches"
+import {
+  ensureDevelopSyncedWithMain,
+  rollbackDevelop,
+} from "@/core/github/branches"
 
 export const Route = createFileRoute("/login")({
   component: LoginPage,
@@ -21,9 +22,10 @@ function LoginPage() {
   const navigate = useNavigate()
 
   const [err, setErr] = React.useState<string | null>(null)
-  const [session, setSession] = React.useState<DeviceSession | null>(null)
   const [status, setStatus] = React.useState("")
   const [busy, setBusy] = React.useState(false)
+
+  const [pat, setPat] = React.useState<string>("")
 
   const cancelRef = React.useRef(false)
 
@@ -41,49 +43,77 @@ function LoginPage() {
     }
   }, [])
 
-  async function start() {
+  const next =
+    new URL(window.location.href).searchParams.get("next") || "/admin/"
+
+  function normalizeToken(input: string) {
+    return input.trim()
+  }
+
+  // If a token is already stored, validate it and go straight to admin
+  React.useEffect(() => {
+    const stored = getGithubToken()
+    if (!stored) return
+
+    cancelRef.current = false
+    setBusy(true)
+    setErr(null)
+    setStatus("Checking saved token…")
+
+    ;(async () => {
+      let rollbackInfo: { previousDevelopSha: string | null } | null = null
+
+      try {
+        await validateTokenForRepo(stored)
+        if (cancelRef.current) return
+
+        setStatus("Checking branches…")
+        rollbackInfo = await ensureDevelopSyncedWithMain()
+        if (cancelRef.current) return
+
+        navigate({ to: next })
+      } catch (e: any) {
+        try {
+          if (rollbackInfo?.previousDevelopSha) {
+            await rollbackDevelop(rollbackInfo.previousDevelopSha)
+          }
+        } catch {
+          // ignore rollback failures
+        }
+
+        // Token is bad or no longer has access -> remove and show login form
+        clearGithubToken()
+
+        const friendly = e?.message ?? String(e)
+        setLoginError(friendly)
+        setErr(friendly)
+        setStatus("")
+        setBusy(false)
+      }
+    })()
+  }, [navigate, next])
+
+  async function loginWithPat() {
     cancelRef.current = false
     setBusy(true)
     setErr(null)
     setStatus("")
-    setSession(null)
-
-    const next =
-      new URL(window.location.href).searchParams.get("next") || "/admin/"
 
     let rollbackInfo: { previousDevelopSha: string | null } | null = null
 
     try {
-      setStatus("Starting GitHub login…")
+      const token = normalizeToken(pat)
+      if (!token) throw new Error("Paste your GitHub PAT.")
 
-      const s = await startGithubLoginDevice(next)
-      if (cancelRef.current) return
-
-      setSession(s)
-
-      if (s.verification_uri && s.verification_uri !== "about:blank") {
-        window.open(s.verification_uri, "_blank", "noopener,noreferrer")
-      }
-
-      setStatus("Waiting for authorization on GitHub…")
-
-      const token = await pollDeviceFlowToken({
-        device_code: s.device_code,
-        interval: s.interval,
-        expires_in: s.expires_in,
-        onUpdate: setStatus,
-        isCancelled: () => cancelRef.current,
-      })
-      if (cancelRef.current) return
-
-      setStatus("Validating repository access…")
+      setStatus("Validating token…")
       await validateTokenForRepo(token)
+      if (cancelRef.current) return
 
-      setStatus("Checking branches (main / develop)…")
-      rollbackInfo = await ensureDevelopSyncedWithMain()
-
-      // ✅ only store token when everything is good
       setGithubToken(token)
+
+      setStatus("Checking branches…")
+      rollbackInfo = await ensureDevelopSyncedWithMain()
+      if (cancelRef.current) return
 
       navigate({ to: next })
     } catch (e: any) {
@@ -100,8 +130,6 @@ function LoginPage() {
       const friendly = e?.message ?? String(e)
       setLoginError(friendly)
       setErr(friendly)
-
-      setSession(null)
       setStatus("")
     } finally {
       setBusy(false)
@@ -112,7 +140,6 @@ function LoginPage() {
     cancelRef.current = true
     setBusy(false)
     setStatus("")
-    setSession(null)
   }
 
   return (
@@ -120,9 +147,7 @@ function LoginPage() {
       <div className="w-full max-w-md rounded-lg border bg-white p-6 space-y-4">
         <div className="space-y-1">
           <h1 className="text-2xl font-semibold">Login</h1>
-          <p className="text-sm opacity-80">
-            Sign in with GitHub to access the admin.
-          </p>
+          <p className="text-sm opacity-80">Enter your GitHub PAT.</p>
         </div>
 
         {err && (
@@ -131,56 +156,47 @@ function LoginPage() {
           </div>
         )}
 
-        {session ? (
-          <div className="rounded-md border bg-neutral-50 p-4 space-y-3">
-            <div className="text-sm">
-              1) Open{" "}
-              <a
-                className="underline"
-                href={session.verification_uri}
-                target="_blank"
-                rel="noreferrer"
-              >
-                {session.verification_uri}
-              </a>
-            </div>
-
-            <div className="text-sm">2) Enter this code:</div>
-
-            <div className="flex items-center gap-2">
-              <div className="flex-1 rounded-md border bg-white px-3 py-2 font-mono text-lg tracking-widest">
-                {session.user_code}
-              </div>
-              <button
-                className="rounded-md border px-3 py-2 text-sm"
-                onClick={() =>
-                  navigator.clipboard.writeText(session.user_code).catch(() => {})
-                }
-              >
-                Copy
-              </button>
-            </div>
-
-            {status && (
-              <div className="text-sm opacity-80">{status}</div>
-            )}
-
-            <button
-              className="w-full rounded-md border px-3 py-2 text-sm"
-              onClick={cancel}
-            >
-              Cancel
-            </button>
+        {busy && status ? (
+          <div className="rounded-md border bg-neutral-50 px-3 py-2 text-sm opacity-80">
+            {status}
           </div>
-        ) : (
+        ) : null}
+
+        <div className="space-y-2">
+          <div className="flex gap-2">
+            <input
+              name="github_pat"
+              autoComplete="current-password"
+              className="flex-1 rounded-md border px-3 py-2 text-sm font-mono"
+              type="password"
+              value={pat}
+              onChange={(e) => setPat(e.target.value)}
+              placeholder="github_pat_… / ghp_…"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
+              disabled={busy}
+            />
+          </div>
+
           <button
             className="w-full rounded-md border px-3 py-2 text-sm bg-neutral-900 text-white border-neutral-900 disabled:opacity-60"
             disabled={busy}
-            onClick={start}
+            onClick={loginWithPat}
           >
-            {busy ? "Working…" : "Login with GitHub"}
+            {busy ? "Working…" : "Login"}
           </button>
-        )}
+
+          {busy && (
+            <button
+              className="w-full rounded-md border px-3 py-2 text-sm"
+              onClick={cancel}
+              type="button"
+            >
+              Cancel
+            </button>
+          )}
+        </div>
       </div>
     </div>
   )

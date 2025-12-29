@@ -10,7 +10,12 @@ export class GitHubApiError extends Error {
   body: string
   url: string
 
-  constructor(opts: { status: number; body: string; url: string; message?: string }) {
+  constructor(opts: {
+    status: number
+    body: string
+    url: string
+    message?: string
+  }) {
     super(opts.message || `GitHub API error (${opts.status})`)
     this.name = "GitHubApiError"
     this.status = opts.status
@@ -26,18 +31,29 @@ function defaultHeaders(init?: RequestInit): HeadersInit {
   }
 }
 
-function assertToken(token?: string) {
-  const t = token ?? getGithubToken()
-  if (!t) throw new Error("Not authenticated (missing GitHub token).")
+/**
+ * Resolve the GitHub PAT.
+ * - explicit opts.token
+ * - localStorage (bloghub.githubToken)
+ */
+function assertToken(token?: string): string {
+  const t = (token ?? getGithubToken())?.trim()
+  if (!t) {
+    throw new Error("Not authenticated (missing GitHub token).")
+  }
   return t
 }
 
 /**
  * Low-level JSON request.
- * - Adds GitHub headers + Bearer token
+ * - Adds GitHub headers + Bearer PAT
  * - Throws GitHubApiError with status/body/url on non-2xx
  */
-export async function githubRequest<T>(path: string, init?: RequestInit, opts?: { token?: string }): Promise<T> {
+export async function githubRequest<T>(
+  path: string,
+  init?: RequestInit,
+  opts?: { token?: string }
+): Promise<T> {
   const token = assertToken(opts?.token)
   const url = `${API}${path}`
 
@@ -59,23 +75,31 @@ export async function githubRequest<T>(path: string, init?: RequestInit, opts?: 
     })
   }
 
-  // Some endpoints can return empty body; be defensive
+  // Some endpoints return empty bodies
   const text = await res.text()
   if (!text) return undefined as T
   return JSON.parse(text) as T
 }
 
-/** Repo-scoped helper: pass `/repos/:owner/:repo/...` tail only. */
+/** Repo-scoped helper: pass `/repos/:owner/:repo/...` tail only */
 export function repoRequest<T>(
   repoRef: RepoRef,
   repoPath: string,
   init?: RequestInit,
   opts?: { token?: string }
 ): Promise<T> {
-  return githubRequest<T>(`/repos/${repoRef.owner}/${repoRef.repo}${repoPath}`, init, opts)
+  return githubRequest<T>(
+    `/repos/${repoRef.owner}/${repoRef.repo}${repoPath}`,
+    init,
+    opts
+  )
 }
 
 /** Convenience: repoRequest using env-configured repo */
-export function configuredRepoRequest<T>(repoPath: string, init?: RequestInit, opts?: { token?: string }) {
+export function configuredRepoRequest<T>(
+  repoPath: string,
+  init?: RequestInit,
+  opts?: { token?: string }
+) {
   return repoRequest<T>(getRepoRef(), repoPath, init, opts)
 }

@@ -1,32 +1,36 @@
 import { getRepoRef } from "./repo"
 
-const TOKEN_URL = "https://github.com/login/oauth/access_token"
-const DEVICE_CODE_URL = "https://github.com/login/device/code"
 const API = "https://api.github.com"
 
+// We now use a GitHub Personal Access Token (PAT) stored locally
 const TOKEN_KEY = "bloghub.githubToken"
 const NEXT_KEY = "bloghub.loginNext"
 const LOGIN_ERROR_KEY = "bloghub.loginError"
 
 /* ------------------------------------------------------------------ */
-/* Token storage                                                       */
+/* Token storage                                                      */
 /* ------------------------------------------------------------------ */
 
 export function getGithubToken(): string | null {
   try {
-    return localStorage.getItem(TOKEN_KEY)
+    const t = localStorage.getItem(TOKEN_KEY)
+    return t ? t.trim() : null
   } catch {
     return null
   }
 }
 
 export function setGithubToken(token: string) {
-  localStorage.setItem(TOKEN_KEY, token)
+  localStorage.setItem(TOKEN_KEY, token.trim())
 }
 
 export function clearGithubToken() {
   localStorage.removeItem(TOKEN_KEY)
 }
+
+/* ------------------------------------------------------------------ */
+/* Login navigation + error helpers                                   */
+/* ------------------------------------------------------------------ */
 
 export function readLoginNext() {
   return localStorage.getItem(NEXT_KEY) || "/admin/"
@@ -49,105 +53,52 @@ export function clearLoginError() {
 }
 
 /* ------------------------------------------------------------------ */
-/* Device Flow                                                         */
+/* PAT "login" (no OAuth / device flow)                               */
 /* ------------------------------------------------------------------ */
 
-export type DeviceSession = {
-  device_code: string
-  user_code: string
-  verification_uri: string
-  expires_in: number
-  interval: number
+export function normalizePat(input: string) {
+  return input.trim()
 }
 
-export async function startGithubLoginDevice(next = "/admin/") {
-  localStorage.setItem(NEXT_KEY, next)
 
-  const clientId = import.meta.env.VITE_GITHUB_CLIENT_ID
-  if (!clientId) throw new Error("Missing VITE_GITHUB_CLIENT_ID")
+/* ------------------------------------------------------------------ */
+/* GitHub fetch helper (optional but handy)                           */
+/* ------------------------------------------------------------------ */
 
-  const body = new URLSearchParams({
-    client_id: clientId,
-    scope: "repo",
-  })
+export async function githubFetch(
+  url: string,
+  init: RequestInit = {},
+  token?: string
+) {
+  const t = token ?? getGithubToken()
+  if (!t) throw new Error("Not authenticated (missing GitHub token).")
 
-  const res = await fetch(DEVICE_CODE_URL, {
-    method: "POST",
-    headers: {
-      Accept: "application/json",
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
-    body,
-  })
+  const headers = new Headers(init.headers)
+  // For PATs, GitHub accepts Bearer; token also works, but Bearer is fine.
+  headers.set("Authorization", `Bearer ${t}`)
+  headers.set("Accept", "application/vnd.github+json")
 
-  const data = (await res.json()) as any
-  if (!res.ok)
-    throw new Error(data?.error_description || "Device flow start failed")
+  const res = await fetch(url, { ...init, headers })
 
-  return {
-    device_code: String(data.device_code),
-    user_code: String(data.user_code),
-    verification_uri: String(data.verification_uri),
-    expires_in: Number(data.expires_in),
-    interval: Number(data.interval),
-  }
-}
-
-export async function pollDeviceFlowToken(opts: {
-  device_code: string
-  interval: number
-  expires_in: number
-  onUpdate?: (msg: string) => void
-  isCancelled?: () => boolean
-}) {
-  const clientId = import.meta.env.VITE_GITHUB_CLIENT_ID
-  if (!clientId) throw new Error("Missing VITE_GITHUB_CLIENT_ID")
-
-  const start = Date.now()
-  let intervalMs = Math.max(1, opts.interval) * 1000
-
-  const sleep = (ms: number) =>
-    new Promise<void>((r) => setTimeout(r, ms))
-
-  while (true) {
-    if (opts.isCancelled?.()) throw new Error("Login cancelled")
-
-    if ((Date.now() - start) / 1000 > opts.expires_in)
-      throw new Error("Login expired")
-
-    const body = new URLSearchParams({
-      client_id: clientId,
-      device_code: opts.device_code,
-      grant_type: "urn:ietf:params:oauth:grant-type:device_code",
-    })
-
-    const res = await fetch(TOKEN_URL, {
-      method: "POST",
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body,
-    })
-
-    const data = (await res.json()) as any
-
-    if (data?.access_token) return String(data.access_token)
-
-    if (data?.error === "authorization_pending") {
-      opts.onUpdate?.("Waiting for GitHub authorization…")
-      await sleep(intervalMs)
-      continue
+  // Provide a clearer error for debugging
+  if (!res.ok) {
+    let body: any = null
+    try {
+      body = await res.json()
+    } catch {
+      // ignore
     }
-
-    if (data?.error === "slow_down") {
-      intervalMs += 5000
-      await sleep(intervalMs)
-      continue
-    }
-
-    throw new Error(data?.error_description || data?.error || "Login failed")
+    const msg =
+      body?.message ||
+      body?.error_description ||
+      `GitHub API error (${res.status})`
+    const err: any = new Error(msg)
+    err.status = res.status
+    err.body = body
+    throw err
   }
+
+  return res
 }
 
 /* ------------------------------------------------------------------ */
@@ -155,23 +106,36 @@ export async function pollDeviceFlowToken(opts: {
 /* ------------------------------------------------------------------ */
 
 export async function validateTokenForRepo(token: string) {
+  const pat = token.trim()
+  if (!pat) throw new Error("Missing GitHub token.")
+
   const { owner, repo } = getRepoRef()
 
   const res = await fetch(`${API}/repos/${owner}/${repo}`, {
     headers: {
-      Authorization: `Bearer ${token}`,
+      Authorization: `Bearer ${pat}`,
       Accept: "application/vnd.github+json",
     },
   })
 
-  if (!res.ok) throw new Error("Token has no access to configured repo")
+  if (!res.ok) {
+    // Try to show GitHub's message (e.g. Bad credentials)
+    let data: any = null
+    try {
+      data = await res.json()
+    } catch {
+      // ignore
+    }
+    throw new Error(data?.message || "Token has no access to configured repo")
+  }
 
   const data = (await res.json()) as any
   const perms = data?.permissions
   const canWrite = Boolean(perms?.push || perms?.admin)
 
-  if (!canWrite)
+  if (!canWrite) {
     throw new Error("Token does not have write permissions to repo")
+  }
 
   return true
 }
