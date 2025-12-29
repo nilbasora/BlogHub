@@ -1,7 +1,8 @@
 {
   "version": 1,
-  "generatedAt": "2025-12-27T16:34:02.460Z",
+  "generatedAt": "2025-12-29T10:57:17.428Z",
   "routes": {
-    "/hello-world/": "/public/generated/posts/e8b1289e-3a74-4b63-a9b3-be37aa2681ed.md"
+    "/hello-world/": "/generated/posts/e8b1289e-3a74-4b63-a9b3-be37aa2681ed.md",
+    "/test/": "/generated/posts/076d80bf-d6b0-4022-8468-f6e7e9284266.md"
   }
 }
