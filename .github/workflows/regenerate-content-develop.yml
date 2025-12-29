@@ -1,0 +1,45 @@
+name: Regenerate content (develop)
+
+on:
+  push:
+    branches:
+      - develop
+    paths-ignore:
+      - "public/generated/**"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: regenerate-content-develop
+  cancel-in-progress: true
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate content
+        run: npm run generate
+
+      - name: Commit generated content
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore: regenerate blog content"
+          branch: develop
+          file_pattern: public/generated/**
