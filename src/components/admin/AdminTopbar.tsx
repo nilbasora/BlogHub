@@ -10,7 +10,7 @@ type Props = {
   deployDisabled?: boolean
 }
 
-export function AdminTopbar({ onToggleSidebar, rightSlot, title, onDeploy, deployDisabled }: Props) {
+export function AdminTopbar({ onToggleSidebar, title, onDeploy, deployDisabled }: Props) {
   return (
     <header className="sticky top-0 z-40 h-14 border-b bg-white">
       <div className="h-full px-4 flex items-center justify-between gap-3">
@@ -34,7 +34,7 @@ export function AdminTopbar({ onToggleSidebar, rightSlot, title, onDeploy, deplo
               className="rounded-md border px-3 py-2 text-sm"
               disabled={deployDisabled}
               onClick={onDeploy}
-              title={deployDisabled ? "Continuous deployment is enabled" : "Merge develop into main"}
+              title={deployDisabled ? "Up to date" : "Update blog with latest changes"}
             >
               Deploy
             </button>
@@ -44,7 +44,6 @@ export function AdminTopbar({ onToggleSidebar, rightSlot, title, onDeploy, deplo
             View site
           </Link>
 
-          {rightSlot ?? <div className="text-xs opacity-70">Not logged in</div>}
         </div>
       </div>
     </header>

@@ -154,3 +154,29 @@ export type ThemeModule = {
     Post: (props: ThemePostProps) => ReactElement
   }
 }
+
+// ----------------------------
+// GitHub
+// ----------------------------
+export type GitHubMergeResponse = {
+  sha: string
+  merged: boolean
+  message?: string
+}
+
+export type GitHubCompareResponse = {
+  status: "identical" | "ahead" | "behind" | "diverged"
+  ahead_by: number
+  behind_by: number
+  total_commits: number
+  html_url?: string
+}
+
+export type BranchSyncInfo = {
+  status: GitHubCompareResponse["status"]
+  aheadBy: number
+  behindBy: number
+  isSynced: boolean
+  developAheadOfMain: boolean
+  compareUrl?: string
+}
