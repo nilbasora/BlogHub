@@ -97,6 +97,10 @@ function safeDateValue(v?: string) {
   return Number.isFinite(t) ? t : Number.NaN
 }
 
+function fileNameFromPath(path: string) {
+  return path.split("/").pop() ?? path
+}
+
 function AdminMediaPage() {
   const { idx } = Route.useLoaderData() as { idx: MediaIndex }
 
@@ -495,7 +499,7 @@ function AdminMediaPage() {
                         </div>
 
                         <div className="min-w-0">
-                          <div className="font-mono text-xs text-neutral-900 break-all">{m.path}</div>
+                          <div className="font-mono text-xs text-neutral-900 break-all">{fileNameFromPath(m.path)}</div>
 
                           <div className="mt-1 text-xs text-neutral-500 flex flex-wrap gap-x-3 gap-y-1">
                             {created ? <span>Added: {created}</span> : null}
