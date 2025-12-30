@@ -126,7 +126,8 @@ export type ThemeField =
     }
 
 export type ThemeSchema = {
-  title: string
+  title: string,
+  description?: string,
   fields: ThemeField[]
 }
 
