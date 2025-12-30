@@ -58,7 +58,6 @@ function AdminLayout() {
   }, [])
 
   async function handleDeploy() {
-    // If synced, do nothing (button should already be disabled, but this is extra safety)
     if (branchesSynced) return
 
     try {
@@ -80,6 +79,7 @@ function AdminLayout() {
         title="Admin Dashboard"
         onDeploy={handleDeploy}
         deployDisabled={branchesSynced || deploying}
+        saveBranch={branchesSynced ? "main" : "develop"}
       />
 
       <div className="flex">
