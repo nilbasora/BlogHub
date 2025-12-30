@@ -2,29 +2,10 @@ import fs from "node:fs"
 import path from "node:path"
 import { pathToFileURL } from "node:url"
 
+import type { ThemeField, ThemeModule } from "@/core/utils/types"
+
 const ROOT = process.cwd()
 const THEMES_DIR = path.join(ROOT, "src", "themes")
-
-type ThemeField =
-  | { key: string; label: string; type: "string"; default: string }
-  | { key: string; label: string; type: "boolean"; default: boolean }
-  | { key: string; label: string; type: "number"; default: number; min?: number; max?: number; step?: number }
-  | { key: string; label: string; type: "select"; options: string[]; default: string }
-
-type ThemeSchema = {
-  title: string
-  fields: ThemeField[]
-}
-
-type ThemeModule = {
-  id: string
-  schema: ThemeSchema
-  defaults: Record<string, unknown>
-  render: {
-    Home: Function
-    Post: Function
-  }
-}
 
 function isDir(p: string) {
   return fs.existsSync(p) && fs.statSync(p).isDirectory()
@@ -42,23 +23,23 @@ function isObject(v: unknown): v is Record<string, unknown> {
   return typeof v === "object" && v !== null && !Array.isArray(v)
 }
 
-function assertString(v: unknown, path: string) {
-  if (typeof v !== "string" || v.length === 0) fail(`${path} must be a non-empty string`)
+function assertString(v: unknown, p: string) {
+  if (typeof v !== "string" || v.length === 0) fail(`${p} must be a non-empty string`)
 }
 
-function assertBoolean(v: unknown, path: string) {
-  if (typeof v !== "boolean") fail(`${path} must be boolean`)
+function assertBoolean(v: unknown, p: string) {
+  if (typeof v !== "boolean") fail(`${p} must be boolean`)
 }
 
-function assertNumber(v: unknown, path: string) {
-  if (typeof v !== "number" || Number.isNaN(v)) fail(`${path} must be a number`)
+function assertNumber(v: unknown, p: string) {
+  if (typeof v !== "number" || Number.isNaN(v)) fail(`${p} must be a number`)
 }
 
-function assertFunction(v: unknown, path: string) {
-  if (typeof v !== "function") fail(`${path} must be a function`)
+function assertFunction(v: unknown, p: string) {
+  if (typeof v !== "function") fail(`${p} must be a function`)
 }
 
-function validateField(field: unknown, idx: number) {
+function validateField(field: unknown, idx: number): ThemeField {
   const p = `schema.fields[${idx}]`
   if (!isObject(field)) fail(`${p} must be an object`)
 
@@ -87,7 +68,11 @@ function validateField(field: unknown, idx: number) {
   }
 
   if (type === "select") {
-    if (!Array.isArray(field.options) || field.options.length === 0 || !field.options.every((o) => typeof o === "string")) {
+    if (
+      !Array.isArray(field.options) ||
+      field.options.length === 0 ||
+      !field.options.every((o) => typeof o === "string")
+    ) {
       fail(`${p}.options must be a non-empty string[]`)
     }
     assertString(field.default, `${p}.default`)
@@ -164,10 +149,9 @@ async function main() {
       }
 
       // Prefer index.ts, fall back to index.tsx
-      const entryPath =
-        fs.existsSync(path.join(t.full, "index.ts"))
-          ? path.join(t.full, "index.ts")
-          : path.join(t.full, "index.tsx")
+      const entryPath = fs.existsSync(path.join(t.full, "index.ts"))
+        ? path.join(t.full, "index.ts")
+        : path.join(t.full, "index.tsx")
 
       const mod = await import(pathToFileURL(entryPath).href)
 

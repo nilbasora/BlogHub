@@ -14,10 +14,10 @@ import { Route as SplatRouteImport } from './routes/$'
 import { Route as AdminRouteRouteImport } from './routes/admin/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
+import { Route as LoginCallbackRouteImport } from './routes/login.callback'
 import { Route as AdminThemeRouteImport } from './routes/admin/theme'
 import { Route as AdminSettingsRouteImport } from './routes/admin/settings'
 import { Route as AdminMediaRouteImport } from './routes/admin/media'
-import { Route as AdminCallbackRouteImport } from './routes/admin/callback'
 import { Route as AdminPostsRouteRouteImport } from './routes/admin/posts/route'
 import { Route as AdminPostsIndexRouteImport } from './routes/admin/posts/index'
 import { Route as AdminPostsPostIdRouteImport } from './routes/admin/posts/$postId'
@@ -47,6 +47,11 @@ const AdminIndexRoute = AdminIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AdminRouteRoute,
 } as any)
+const LoginCallbackRoute = LoginCallbackRouteImport.update({
+  id: '/callback',
+  path: '/callback',
+  getParentRoute: () => LoginRoute,
+} as any)
 const AdminThemeRoute = AdminThemeRouteImport.update({
   id: '/theme',
   path: '/theme',
@@ -60,11 +65,6 @@ const AdminSettingsRoute = AdminSettingsRouteImport.update({
 const AdminMediaRoute = AdminMediaRouteImport.update({
   id: '/media',
   path: '/media',
-  getParentRoute: () => AdminRouteRoute,
-} as any)
-const AdminCallbackRoute = AdminCallbackRouteImport.update({
-  id: '/callback',
-  path: '/callback',
   getParentRoute: () => AdminRouteRoute,
 } as any)
 const AdminPostsRouteRoute = AdminPostsRouteRouteImport.update({
@@ -87,12 +87,12 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteRouteWithChildren
   '/$': typeof SplatRoute
-  '/login': typeof LoginRoute
+  '/login': typeof LoginRouteWithChildren
   '/admin/posts': typeof AdminPostsRouteRouteWithChildren
-  '/admin/callback': typeof AdminCallbackRoute
   '/admin/media': typeof AdminMediaRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/theme': typeof AdminThemeRoute
+  '/login/callback': typeof LoginCallbackRoute
   '/admin/': typeof AdminIndexRoute
   '/admin/posts/$postId': typeof AdminPostsPostIdRoute
   '/admin/posts/': typeof AdminPostsIndexRoute
@@ -100,11 +100,11 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/$': typeof SplatRoute
-  '/login': typeof LoginRoute
-  '/admin/callback': typeof AdminCallbackRoute
+  '/login': typeof LoginRouteWithChildren
   '/admin/media': typeof AdminMediaRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/theme': typeof AdminThemeRoute
+  '/login/callback': typeof LoginCallbackRoute
   '/admin': typeof AdminIndexRoute
   '/admin/posts/$postId': typeof AdminPostsPostIdRoute
   '/admin/posts': typeof AdminPostsIndexRoute
@@ -114,12 +114,12 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteRouteWithChildren
   '/$': typeof SplatRoute
-  '/login': typeof LoginRoute
+  '/login': typeof LoginRouteWithChildren
   '/admin/posts': typeof AdminPostsRouteRouteWithChildren
-  '/admin/callback': typeof AdminCallbackRoute
   '/admin/media': typeof AdminMediaRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/theme': typeof AdminThemeRoute
+  '/login/callback': typeof LoginCallbackRoute
   '/admin/': typeof AdminIndexRoute
   '/admin/posts/$postId': typeof AdminPostsPostIdRoute
   '/admin/posts/': typeof AdminPostsIndexRoute
@@ -132,10 +132,10 @@ export interface FileRouteTypes {
     | '/$'
     | '/login'
     | '/admin/posts'
-    | '/admin/callback'
     | '/admin/media'
     | '/admin/settings'
     | '/admin/theme'
+    | '/login/callback'
     | '/admin/'
     | '/admin/posts/$postId'
     | '/admin/posts/'
@@ -144,10 +144,10 @@ export interface FileRouteTypes {
     | '/'
     | '/$'
     | '/login'
-    | '/admin/callback'
     | '/admin/media'
     | '/admin/settings'
     | '/admin/theme'
+    | '/login/callback'
     | '/admin'
     | '/admin/posts/$postId'
     | '/admin/posts'
@@ -158,10 +158,10 @@ export interface FileRouteTypes {
     | '/$'
     | '/login'
     | '/admin/posts'
-    | '/admin/callback'
     | '/admin/media'
     | '/admin/settings'
     | '/admin/theme'
+    | '/login/callback'
     | '/admin/'
     | '/admin/posts/$postId'
     | '/admin/posts/'
@@ -171,7 +171,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRouteRoute: typeof AdminRouteRouteWithChildren
   SplatRoute: typeof SplatRoute
-  LoginRoute: typeof LoginRoute
+  LoginRoute: typeof LoginRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
@@ -211,6 +211,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminIndexRouteImport
       parentRoute: typeof AdminRouteRoute
     }
+    '/login/callback': {
+      id: '/login/callback'
+      path: '/callback'
+      fullPath: '/login/callback'
+      preLoaderRoute: typeof LoginCallbackRouteImport
+      parentRoute: typeof LoginRoute
+    }
     '/admin/theme': {
       id: '/admin/theme'
       path: '/theme'
@@ -230,13 +237,6 @@ declare module '@tanstack/react-router' {
       path: '/media'
       fullPath: '/admin/media'
       preLoaderRoute: typeof AdminMediaRouteImport
-      parentRoute: typeof AdminRouteRoute
-    }
-    '/admin/callback': {
-      id: '/admin/callback'
-      path: '/callback'
-      fullPath: '/admin/callback'
-      preLoaderRoute: typeof AdminCallbackRouteImport
       parentRoute: typeof AdminRouteRoute
     }
     '/admin/posts': {
@@ -279,7 +279,6 @@ const AdminPostsRouteRouteWithChildren = AdminPostsRouteRoute._addFileChildren(
 
 interface AdminRouteRouteChildren {
   AdminPostsRouteRoute: typeof AdminPostsRouteRouteWithChildren
-  AdminCallbackRoute: typeof AdminCallbackRoute
   AdminMediaRoute: typeof AdminMediaRoute
   AdminSettingsRoute: typeof AdminSettingsRoute
   AdminThemeRoute: typeof AdminThemeRoute
@@ -288,7 +287,6 @@ interface AdminRouteRouteChildren {
 
 const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminPostsRouteRoute: AdminPostsRouteRouteWithChildren,
-  AdminCallbackRoute: AdminCallbackRoute,
   AdminMediaRoute: AdminMediaRoute,
   AdminSettingsRoute: AdminSettingsRoute,
   AdminThemeRoute: AdminThemeRoute,
@@ -299,11 +297,21 @@ const AdminRouteRouteWithChildren = AdminRouteRoute._addFileChildren(
   AdminRouteRouteChildren,
 )
 
+interface LoginRouteChildren {
+  LoginCallbackRoute: typeof LoginCallbackRoute
+}
+
+const LoginRouteChildren: LoginRouteChildren = {
+  LoginCallbackRoute: LoginCallbackRoute,
+}
+
+const LoginRouteWithChildren = LoginRoute._addFileChildren(LoginRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRouteRoute: AdminRouteRouteWithChildren,
   SplatRoute: SplatRoute,
-  LoginRoute: LoginRoute,
+  LoginRoute: LoginRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

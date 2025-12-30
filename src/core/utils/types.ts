@@ -94,22 +94,18 @@ export type ParsedMarkdownPost = {
 export type MediaType = "image" | "video" | "gif" | "other"
 
 export type MediaIndexItem = {
+  id: string
   path: string // e.g. "/media/foo.png"
-  type: MediaType
+  type: MediaType,
+  usedBy: string[] // post IDs
+  size?: number // in bytes
+  width?: number
+  height?: number
   createdAt?: ISODateString
 }
 
 export type MediaIndex = GeneratedManifest<number> & {
   items: MediaIndexItem[]
-}
-
-export type MediaUsage = GeneratedManifest<number> & {
-  usage: Record<string, string[]> // path -> [postId...]
-}
-
-// UI model
-export type MediaRow = MediaIndexItem & {
-  usedBy: string[]
 }
 
 // ----------------------------
@@ -130,7 +126,8 @@ export type ThemeField =
     }
 
 export type ThemeSchema = {
-  title: string
+  title: string,
+  description?: string,
   fields: ThemeField[]
 }
 
@@ -157,4 +154,30 @@ export type ThemeModule = {
     Home: (props: ThemeHomeProps) => ReactElement
     Post: (props: ThemePostProps) => ReactElement
   }
+}
+
+// ----------------------------
+// GitHub
+// ----------------------------
+export type GitHubMergeResponse = {
+  sha: string
+  merged: boolean
+  message?: string
+}
+
+export type GitHubCompareResponse = {
+  status: "identical" | "ahead" | "behind" | "diverged"
+  ahead_by: number
+  behind_by: number
+  total_commits: number
+  html_url?: string
+}
+
+export type BranchSyncInfo = {
+  status: GitHubCompareResponse["status"]
+  aheadBy: number
+  behindBy: number
+  isSynced: boolean
+  developAheadOfMain: boolean
+  compareUrl?: string
 }

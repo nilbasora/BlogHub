@@ -1,5 +1,22 @@
 {
   "version": 1,
-  "generatedAt": "2025-12-23T19:52:35.424Z",
-  "items": []
+  "generatedAt": "2025-12-30T21:47:39.653Z",
+  "items": [
+    {
+      "id": "e93d8a9461f3cfd4be2a428e11826919b11a80eb",
+      "path": "/media/favicon-bh.png",
+      "type": "image",
+      "usedBy": [],
+      "createdAt": "2025-12-30T21:47:32.149Z",
+      "size": 26709
+    },
+    {
+      "id": "c8657b1dbc796e0df8f9a2328ea00ee6725f8d5b",
+      "path": "/media/logo-bh.png",
+      "type": "image",
+      "usedBy": [],
+      "createdAt": "2025-12-30T21:47:32.149Z",
+      "size": 57214
+    }
+  ]
 }

@@ -7,10 +7,16 @@
     "validate:settings": "tsx scripts/validate-settings.ts",
     "fix:settings": "tsx scripts/validate-settings.ts --fix",
     "validate:themes": "tsx scripts/validate-themes.ts",
-    "generate": "tsx scripts/generate-content.ts",
+
+    "generate": "tsx scripts/generate.ts",
+    "generate:content": "tsx scripts/generate-content.ts",
+    "generate:media": "tsx scripts/generate-media.ts",
+
     "check:env": "tsx scripts/check-env.ts",
+
     "dev": "npm run validate:settings && npm run validate:themes && npm run generate && npm run check:env && vite",
     "build": "npm run validate:settings && npm run validate:themes && npm run generate && npm run check:env && tsc -b && vite build",
+
     "lint": "eslint .",
     "preview": "vite preview"
   },
@@ -46,6 +52,7 @@
     "glob": "^13.0.0",
     "globals": "^16.5.0",
     "gray-matter": "^4.0.3",
+    "image-size": "^2.0.2",
     "postcss": "^8.5.6",
     "tailwindcss": "^4.1.18",
     "tsx": "^4.21.0",

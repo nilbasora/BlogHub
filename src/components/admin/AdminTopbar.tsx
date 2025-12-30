@@ -1,3 +1,4 @@
+// @/components/admin/AdminTopbar.tsx
 import * as React from "react"
 import { Link } from "@tanstack/react-router"
 
@@ -8,9 +9,27 @@ type Props = {
 
   onDeploy?: () => Promise<void> | void
   deployDisabled?: boolean
+
+  saveBranch?: string
 }
 
-export function AdminTopbar({ onToggleSidebar, rightSlot, title, onDeploy, deployDisabled }: Props) {
+function BranchPill({ branch }: { branch: string }) {
+  return (
+    <span className="inline-flex items-center gap-2 rounded-full border border-neutral-200 bg-white px-3 py-1.5 text-xs text-neutral-700 shadow-sm">
+      <span className="h-1.5 w-1.5 rounded-full bg-neutral-900" />
+      Save branch: <span className="font-mono text-neutral-900">{branch}</span>
+    </span>
+  )
+}
+
+export function AdminTopbar({
+  onToggleSidebar,
+  title,
+  onDeploy,
+  deployDisabled,
+  rightSlot,
+  saveBranch,
+}: Props) {
   return (
     <header className="sticky top-0 z-40 h-14 border-b bg-white">
       <div className="h-full px-4 flex items-center justify-between gap-3">
@@ -25,16 +44,31 @@ export function AdminTopbar({ onToggleSidebar, rightSlot, title, onDeploy, deplo
           </button>
 
           <div className="font-semibold truncate">{title ?? "Admin"}</div>
+
+          {saveBranch ? (
+            <div className="hidden sm:block">
+              <BranchPill branch={saveBranch} />
+            </div>
+          ) : null}
         </div>
 
         <div className="flex items-center gap-3">
+          {/* On mobile, show the branch pill on the right */}
+          {saveBranch ? (
+            <div className="sm:hidden">
+              <BranchPill branch={saveBranch} />
+            </div>
+          ) : null}
+
+          {rightSlot}
+
           {onDeploy ? (
             <button
               type="button"
               className="rounded-md border px-3 py-2 text-sm"
               disabled={deployDisabled}
               onClick={onDeploy}
-              title={deployDisabled ? "Continuous deployment is enabled" : "Merge develop into main"}
+              title={deployDisabled ? "Up to date" : "Update blog with latest changes"}
             >
               Deploy
             </button>
@@ -43,8 +77,6 @@ export function AdminTopbar({ onToggleSidebar, rightSlot, title, onDeploy, deplo
           <Link to="/" className="text-sm underline opacity-80 hover:opacity-100">
             View site
           </Link>
-
-          {rightSlot ?? <div className="text-xs opacity-70">Not logged in</div>}
         </div>
       </div>
     </header>
