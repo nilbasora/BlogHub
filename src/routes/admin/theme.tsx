@@ -30,15 +30,6 @@ function inputBase(className?: string) {
   )
 }
 
-function pill(active: boolean) {
-  return cx(
-    "inline-flex items-center justify-center rounded-full border px-3 py-1 text-xs shadow-sm transition",
-    active
-      ? "border-neutral-900 bg-neutral-900 text-white"
-      : "border-neutral-200 bg-white text-neutral-800 hover:bg-neutral-50"
-  )
-}
-
 function cardShell(selected: boolean) {
   return cx(
     "group rounded-2xl border bg-white shadow-sm overflow-hidden transition",
@@ -192,6 +183,15 @@ function AdminThemePage() {
 
   const activeTheme = getThemeById(activeThemeId)
   const draftTheme = getThemeById(draftThemeId) ?? activeTheme
+
+  const schema = draftTheme?.schema
+  if (!draftTheme || !schema) {
+    return (
+      <div className="p-6 text-sm text-red-700">
+        Theme not found or missing schema: <span className="font-mono">{draftThemeId}</span>
+      </div>
+    )
+  }
 
   async function onSave() {
     try {
@@ -474,7 +474,7 @@ function AdminThemePage() {
                     </div>
 
                     <ThemeVarsForm
-                      schema={(getThemeById(draftThemeId) ?? draftTheme)?.schema}
+                      schema={schema}
                       values={draftVars}
                       onChange={setDraftVars}
                     />

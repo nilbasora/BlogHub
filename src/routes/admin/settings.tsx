@@ -430,13 +430,12 @@ function AdminSettingsPage() {
     let unblock: null | (() => void) = null
 
     try {
-      // IMPORTANT: this router version expects an object with blockerFn
-      // @ts-expect-error - history types differ per adapter/version
       unblock = router.history.block({
         blockerFn: (tx: any) => {
-          const ok = window.confirm("You have unsaved changes. If you leave, they will be lost. Continue?")
+          const ok = window.confirm(
+            "You have unsaved changes. If you leave, they will be lost. Continue?"
+          )
           if (ok) {
-            // stop blocking then retry the navigation
             unblock?.()
             tx?.retry?.()
           }
