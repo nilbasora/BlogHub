@@ -5,6 +5,7 @@ import type { SiteSettings, MediaIndex, MediaIndexItem } from "@/core/utils/type
 import { FormField } from "@/components/admin/FormField"
 import { commitSiteSettings } from "@/core/github/commit"
 import { loadMediaIndexFromRepo } from "@/core/media/loadMediaIndexFromRepo"
+import { withBase } from "@/core/config/paths"
 
 export const Route = createFileRoute("/admin/settings")({
   loader: async () => {
@@ -120,7 +121,7 @@ function MediaPicker({
   const [q, setQ] = React.useState("")
   const [active, setActive] = React.useState<string>("images")
 
-  const previewSrc = (value ?? "").trim()
+  const previewSrc = toPreviewUrl(value ?? "")
 
   const load = React.useCallback(async () => {
     setLoading(true)
@@ -308,7 +309,7 @@ function MediaPicker({
                     >
                       <div className="aspect-square w-full overflow-hidden rounded-xl border border-neutral-100 bg-neutral-50">
                         <img
-                          src={it.path}
+                          src={withBase(it.path)}
                           alt=""
                           className="h-full w-full object-cover transition group-hover:scale-[1.02]"
                           loading="lazy"
@@ -353,6 +354,14 @@ function deepEqual(a: any, b: any) {
   if (aKeys.length !== bKeys.length) return false
   for (const k of aKeys) if (!deepEqual(a[k], b[k])) return false
   return true
+}
+
+function toPreviewUrl(v: string) {
+  const s = (v ?? "").trim()
+  if (!s) return ""
+  // If already absolute (http/https/data/blob), don't rewrite it
+  if (/^(https?:|data:|blob:)/i.test(s)) return s
+  return withBase(s)
 }
 
 function AdminSettingsPage() {
