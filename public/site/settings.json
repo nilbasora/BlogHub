@@ -3,8 +3,8 @@
   "tagline": "Static CMS on GitHub Pages",
   "siteUrl": "https://nilbasora.github.io/BlogHub/",
   "language": "en",
-  "logo": "/assets/logo.png",
-  "favicon": "/assets/favicon.ico",
+  "logo": "/media/logo-bh.png",
+  "favicon": "/media/favicon-bh.png",
   "cd": false,
   "indexCategories": true,
   "permalinks": {
