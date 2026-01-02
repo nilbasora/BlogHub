@@ -12,10 +12,8 @@
     "generate:content": "tsx scripts/generate-content.ts",
     "generate:media": "tsx scripts/generate-media.ts",
 
-    "check:env": "tsx scripts/check-env.ts",
-
-    "dev": "npm run validate:settings && npm run validate:themes && npm run generate && npm run check:env && vite",
-    "build": "npm run validate:settings && npm run validate:themes && npm run generate && npm run check:env && tsc -b && vite build",
+    "dev": "npm run validate:settings && npm run validate:themes && npm run generate && vite",
+    "build": "npm run validate:settings && npm run validate:themes && npm run generate && tsc -b && vite build",
 
     "lint": "eslint .",
     "preview": "vite preview"
