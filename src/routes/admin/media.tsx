@@ -7,6 +7,7 @@ import type { MediaIndex, MediaIndexItem, MediaType } from "@/core/utils/types"
 
 import { loadMediaIndexFromRepo } from "@/core/media/loadMediaIndexFromRepo"
 import { commitMediaFile, deleteMediaFile } from "@/core/github/commit"
+import { withBase } from "@/core/config/paths"
 
 const BRANCH = "develop"
 
@@ -295,7 +296,7 @@ function AdminMediaPage() {
   }
 
   function copyMarkdown(path: string) {
-    const md = `![](${path})`
+    const md = `![](${withBase(path)})`
     navigator.clipboard?.writeText(md)
     alert(`Copied: ${md}`)
   }
@@ -489,8 +490,7 @@ function AdminMediaPage() {
                       <div className="col-span-7 min-w-0 flex items-center gap-3">
                         <div className="h-12 w-12 shrink-0 overflow-hidden rounded-xl border border-neutral-200 bg-neutral-50">
                           {isImageLike ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img src={m.path} alt="" className="h-full w-full object-cover" loading="lazy" />
+                            <img src={withBase(m.path)} alt="" className="h-full w-full object-cover" loading="lazy" />
                           ) : (
                             <div className="grid h-full w-full place-items-center text-[10px] text-neutral-400">
                               {String(m.type ?? "file").toUpperCase()}
