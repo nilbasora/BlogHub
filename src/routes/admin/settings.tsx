@@ -1,15 +1,14 @@
 import * as React from "react"
 import { createFileRoute, useRouter } from "@tanstack/react-router"
-import { loadSettings } from "@/core/content/loadSettings"
+import { loadSettingsFromRepo  } from "@/core/content/loadSettingsFromRepo"
 import type { SiteSettings } from "@/core/utils/types"
 import { FormField } from "@/components/admin/FormField"
 import { commitSiteSettings } from "@/core/github/commit"
 import { MediaPicker } from "@/components/MediaPicker"
 
-
 export const Route = createFileRoute("/admin/settings")({
   loader: async () => {
-    const settings = await loadSettings()
+    const settings = await loadSettingsFromRepo()
     return { settings }
   },
   component: AdminSettingsPage,
@@ -116,24 +115,35 @@ function deepEqual(a: any, b: any) {
   return true
 }
 
+
+function normalizeSettings(settings: any): SiteSettings {
+  return {
+    ...settings,
+    language: settings?.language ?? "en",
+    logo: settings?.logo ?? "",
+    favicon: settings?.favicon ?? "",
+    cd: settings?.cd ?? false,
+    indexCategories: settings?.indexCategories ?? true,
+    permalinks: {
+      ...(settings?.permalinks ?? {}),
+      post: normalizePostPermalink(settings?.permalinks?.post ?? "/:slug/"),
+    },
+  } as SiteSettings
+}
+
 function AdminSettingsPage() {
   const router = useRouter()
   const { settings } = Route.useLoaderData()
 
-  const [draft, setDraft] = React.useState<SiteSettings>(() => {
-    return {
-      ...settings,
-      language: (settings as any).language ?? "en",
-      logo: (settings as any).logo ?? "",
-      favicon: (settings as any).favicon ?? "",
-      cd: (settings as any).cd ?? false,
-      indexCategories: (settings as any).indexCategories ?? true,
-      permalinks: {
-        ...(settings as any).permalinks,
-        post: normalizePostPermalink((settings as any).permalinks?.post ?? "/:slug/"),
-      },
-    } as SiteSettings
-  })
+  const normalizedFromLoader = React.useMemo(() => normalizeSettings(settings as any), [settings])
+
+  const [base, setBase] = React.useState<SiteSettings>(() => normalizedFromLoader)
+  const [draft, setDraft] = React.useState<SiteSettings>(() => normalizedFromLoader)
+
+  React.useEffect(() => {
+    setBase(normalizedFromLoader)
+    setDraft(normalizedFromLoader)
+  }, [normalizedFromLoader])
 
   const [permalinkMode, setPermalinkMode] = React.useState<string>(() =>
     detectPreset(draft.permalinks?.post ?? "/:slug/")
@@ -174,7 +184,7 @@ function AdminSettingsPage() {
 
   const currentPermalink = normalizePostPermalink(draft.permalinks?.post ?? "/:slug/")
   const writeBranch = getWriteBranchFromCd((draft as any).cd)
-  const isDirty = !deepEqual(settings, draft)
+  const isDirty = !deepEqual(base, draft)
 
   // ✅ Correct TanStack Router guard + beforeunload
   React.useEffect(() => {
@@ -193,9 +203,7 @@ function AdminSettingsPage() {
     try {
       unblock = router.history.block({
         blockerFn: (tx: any) => {
-          const ok = window.confirm(
-            "You have unsaved changes. If you leave, they will be lost. Continue?"
-          )
+          const ok = window.confirm("You have unsaved changes. If you leave, they will be lost. Continue?")
           if (ok) {
             unblock?.()
             tx?.retry?.()
@@ -263,9 +271,7 @@ function AdminSettingsPage() {
               />
             </FormField>
 
-            <FormField
-              label="Logo"
-            >
+            <FormField label="Logo">
               <MediaPicker
                 label="Select a logo"
                 value={(draft as any).logo ?? ""}
@@ -275,9 +281,7 @@ function AdminSettingsPage() {
               />
             </FormField>
 
-            <FormField
-              label="Favicon"
-            >
+            <FormField label="Favicon">
               <MediaPicker
                 label="Select a favicon"
                 value={(draft as any).favicon ?? ""}
@@ -393,7 +397,10 @@ function AdminSettingsPage() {
                     Available tags:
                     <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
                       {AVAILABLE_TOKENS.map((t) => (
-                        <div key={t.token} className="rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2">
+                        <div
+                          key={t.token}
+                          className="rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2"
+                        >
                           <div className="text-xs font-mono text-neutral-900">{t.token}</div>
                           <div className="text-[11px] text-neutral-500">{t.desc}</div>
                         </div>
@@ -433,7 +440,7 @@ function AdminSettingsPage() {
                       "rounded-xl border border-neutral-300 bg-white px-4 py-2 text-sm shadow-sm",
                       "hover:bg-neutral-50 active:translate-y-[1px] transition"
                     )}
-                    onClick={() => setDraft(settings as any)}
+                    onClick={() => setDraft(base as any)}
                   >
                     Discard
                   </button>
@@ -447,7 +454,7 @@ function AdminSettingsPage() {
                       try {
                         const branch = getWriteBranchFromCd((draft as any).cd)
                         await commitSiteSettings(draft, branch)
-                        alert(`Settings saved to GitHub ✅ (branch: ${branch})`)
+                        setBase(draft)
                       } catch (e: any) {
                         alert(e?.message ?? String(e))
                       }
