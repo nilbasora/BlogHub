@@ -1,4 +1,5 @@
 // @/core/github/client.ts
+import { forceLogout } from "./logout"
 import { getGithubToken } from "./oauth"
 import type { RepoRef } from "./repo"
 import { getRepoRef } from "./repo"
@@ -54,7 +55,15 @@ export async function githubRequest<T>(
   init?: RequestInit,
   opts?: { token?: string }
 ): Promise<T> {
-  const token = assertToken(opts?.token)
+  let token: string
+
+  try {
+    token = assertToken(opts?.token)
+  } catch {
+    forceLogout("missing-token")
+    throw new Error("Logged out: missing GitHub token")
+  }
+
   const url = `${API}${path}`
 
   const res = await fetch(url, {
@@ -64,6 +73,11 @@ export async function githubRequest<T>(
       Authorization: `Bearer ${token}`,
     },
   })
+
+  if (res.status === 401 || res.status === 403) {
+    forceLogout(`auth-${res.status}`)
+    throw new Error("Logged out: invalid or unauthorized GitHub token")
+  }
 
   if (!res.ok) {
     const body = await res.text().catch(() => "")

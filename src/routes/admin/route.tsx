@@ -1,16 +1,22 @@
 import * as React from "react"
-import { Outlet, createFileRoute, redirect } from "@tanstack/react-router"
+import { Outlet, createFileRoute, redirect, useNavigate } from "@tanstack/react-router"
 import { AdminTopbar } from "@/components/admin/AdminTopbar"
 import { AdminSidebar } from "@/components/admin/AdminSidebar"
-import { getGithubToken, validateTokenForRepo } from "@/core/github/oauth"
+import { clearGithubToken, getGithubToken, validateTokenForRepo } from "@/core/github/oauth"
 import { checkBranchesSync, deployDevelopToMain } from "@/core/github/deploy"
+import { clearViewerCache } from "@/core/github/useViewer"
+import { registerLogoutHandler } from "@/core/github/logout"
 
 let validatedToken: string | null = null
 
 export const Route = createFileRoute("/admin")({
   beforeLoad: async ({ location }) => {
     const token = getGithubToken()
+
     if (!token) {
+      clearGithubToken()
+      clearViewerCache()
+      validatedToken = null
       throw redirect({ to: "/login", search: { next: location.href } })
     }
 
@@ -19,6 +25,8 @@ export const Route = createFileRoute("/admin")({
         await validateTokenForRepo(token)
         validatedToken = token
       } catch {
+        clearGithubToken()
+        clearViewerCache()
         validatedToken = null
         throw redirect({ to: "/login", search: { next: location.href } })
       }
@@ -28,9 +36,19 @@ export const Route = createFileRoute("/admin")({
 })
 
 function AdminLayout() {
+  const navigate = useNavigate()
   const [mobileOpen, setMobileOpen] = React.useState(false)
   const [branchesSynced, setBranchesSynced] = React.useState<boolean>(true)
   const [deploying, setDeploying] = React.useState(false)
+
+  React.useEffect(() => {
+    registerLogoutHandler(() => {
+      clearGithubToken()
+      clearViewerCache()
+      setMobileOpen(false)
+      navigate({ to: "/login", search: { next: window.location.href } })
+    })
+  }, [navigate])
 
   // Check branch status on mount
   React.useEffect(() => {
