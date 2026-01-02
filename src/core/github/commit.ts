@@ -1,6 +1,8 @@
 import type { SiteSettings } from "@/core/utils/types"
 import { deleteFile, putBinaryFile, putJsonFile, putTextFile, repoPathFromPublicUrl } from "./contents"
 
+const settingsPath = "public/site/settings.json"
+
 function fmValue(v: unknown) {
   // YAML-ish value output (simple + safe for your frontmatter)
   if (typeof v === "string") return JSON.stringify(v)
@@ -17,7 +19,7 @@ export function serializePostMd(frontmatter: Record<string, unknown>, body: stri
 /** SETTINGS */
 export async function commitSiteSettings(settings: SiteSettings, branch?: string) {
   return putJsonFile({
-    repoFilePath: "content/site/settings.json",
+    repoFilePath: settingsPath,
     json: settings,
     message: "chore: update site settings",
     branch,
@@ -26,7 +28,7 @@ export async function commitSiteSettings(settings: SiteSettings, branch?: string
 
 export async function commitThemeSettings(settings: SiteSettings, branch?: string) {
   return putJsonFile({
-    repoFilePath: "content/site/settings.json",
+    repoFilePath: settingsPath,
     json: settings,
     message: "chore: update theme settings",
     branch,
