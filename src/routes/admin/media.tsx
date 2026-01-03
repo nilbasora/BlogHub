@@ -605,16 +605,6 @@ function AdminMediaPage() {
 
                         <button
                           type="button"
-                          className="text-xs rounded-lg px-2 py-1 hover:bg-neutral-50 disabled:opacity-50"
-                          onClick={() => copyMarkdown(m.path)}
-                          disabled={busy}
-                          title="Copy markdown"
-                        >
-                          Copy
-                        </button>
-
-                        <button
-                          type="button"
                           className="text-xs rounded-lg px-2 py-1 text-red-700 hover:bg-red-50 disabled:opacity-50"
                           onClick={() => requestDelete(m.path, usedBy)}
                           disabled={busy}
