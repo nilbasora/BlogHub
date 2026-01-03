@@ -9,6 +9,8 @@ import { loadMediaIndexFromRepo } from "@/core/media/loadMediaIndexFromRepo"
 import { commitMediaFile, deleteMediaFile } from "@/core/github/commit"
 import { withBase } from "@/core/config/paths"
 
+import { MediaEditorDialog } from "@/components/admin/MediaEditorDialog"
+
 const BRANCH = "develop"
 
 export const Route = createFileRoute("/admin/media")({
@@ -142,14 +144,22 @@ function AdminMediaPage() {
     y: number
   }>({ open: false, src: "", name: "", x: 0, y: 0 })
 
+  // Editor state
+  const [editor, setEditor] = React.useState<{
+    open: boolean
+    path: string | null
+    src: string
+    filename: string
+  }>({ open: false, path: null, src: "", filename: "" })
+
   function clamp(n: number, min: number, max: number) {
     return Math.max(min, Math.min(max, n))
   }
 
   function showPreview(e: React.MouseEvent, src: string, name: string) {
     const padding = 16
-    const w = 520 // preview card width target
-    const h = 360 // preview card height target
+    const w = 520
+    const h = 360
 
     const x = clamp(e.clientX + 18, padding, window.innerWidth - w - padding)
     const y = clamp(e.clientY + 18, padding, window.innerHeight - h - padding)
@@ -158,7 +168,6 @@ function AdminMediaPage() {
   }
 
   function movePreview(e: React.MouseEvent) {
-    // use functional update so we don't depend on stale "preview" in closure
     setPreview((p) => {
       if (!p.open) return p
       const padding = 16
@@ -342,6 +351,16 @@ function AdminMediaPage() {
     const md = `![](${withBase(path)})`
     navigator.clipboard?.writeText(md)
     alert(`Copied: ${md}`)
+  }
+
+  function openEditorFor(path: string) {
+    const filename = fileNameFromPath(path)
+    setEditor({
+      open: true,
+      path,
+      src: withBase(path),
+      filename,
+    })
   }
 
   return (
@@ -572,6 +591,18 @@ function AdminMediaPage() {
                       </div>
 
                       <div className="col-span-1 flex justify-end gap-2">
+                        {isImageLike ? (
+                          <button
+                            type="button"
+                            className="text-xs rounded-lg px-2 py-1 hover:bg-neutral-50 disabled:opacity-50"
+                            onClick={() => openEditorFor(m.path)}
+                            disabled={busy}
+                            title="Edit image"
+                          >
+                            Edit
+                          </button>
+                        ) : null}
+
                         <button
                           type="button"
                           className="text-xs rounded-lg px-2 py-1 hover:bg-neutral-50 disabled:opacity-50"
@@ -645,6 +676,17 @@ function AdminMediaPage() {
                       ) : null}
 
                       <div className="flex items-center gap-2">
+                        {isImageLike ? (
+                          <button
+                            type="button"
+                            className="inline-flex items-center justify-center rounded-xl border border-neutral-200 bg-white px-3 py-2 text-sm shadow-sm hover:bg-neutral-50 disabled:opacity-60"
+                            onClick={() => openEditorFor(m.path)}
+                            disabled={busy}
+                          >
+                            Edit
+                          </button>
+                        ) : null}
+
                         <button
                           type="button"
                           className="inline-flex items-center justify-center rounded-xl border border-neutral-200 bg-white px-3 py-2 text-sm shadow-sm hover:bg-neutral-50 disabled:opacity-60"
@@ -706,6 +748,37 @@ function AdminMediaPage() {
           </div>
         </div>
       ) : null}
+
+      {/* Image editor modal */}
+      <MediaEditorDialog
+        open={editor.open}
+        src={editor.src}
+        filename={editor.filename}
+        onClose={() => setEditor({ open: false, path: null, src: "", filename: "" })}
+        onSave={async (blob) => {
+          if (!editor.path) return
+
+          // Overwrite same path by default
+          const name = fileNameFromPath(editor.path)
+          const file = new File([blob], name, { type: blob.type || "image/png" })
+
+          setBusy(editor.path, true)
+          try {
+            await commitMediaFile({
+              publicPath: editor.path,
+              file,
+              message: `chore: edit media ${editor.path}`,
+            })
+
+            alert("Edited image committed to GitHub ✅\nNote: media-index.json updates after your generator runs.")
+          } catch (err: any) {
+            console.error(err)
+            alert(`Save failed.\n\n${err?.message || err}`)
+          } finally {
+            setBusy(editor.path, false)
+          }
+        }}
+      />
     </div>
   )
 }
