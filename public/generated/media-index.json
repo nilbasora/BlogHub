@@ -1,13 +1,13 @@
 {
   "version": 1,
-  "generatedAt": "2026-01-03T00:11:56.118Z",
+  "generatedAt": "2026-01-03T00:17:23.489Z",
   "items": [
     {
       "id": "e93d8a9461f3cfd4be2a428e11826919b11a80eb",
       "path": "/media/favicon-bh.png",
       "type": "image",
       "usedBy": [],
-      "createdAt": "2026-01-03T00:11:48.143Z",
+      "createdAt": "2026-01-03T00:17:15.829Z",
       "size": 26709
     },
     {
@@ -15,7 +15,7 @@
       "path": "/media/logo-bh.png",
       "type": "image",
       "usedBy": [],
-      "createdAt": "2026-01-03T00:11:48.143Z",
+      "createdAt": "2026-01-03T00:17:15.829Z",
       "size": 57214
     }
   ]
