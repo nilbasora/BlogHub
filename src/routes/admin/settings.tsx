@@ -1,10 +1,11 @@
 import * as React from "react"
 import { createFileRoute, useRouter } from "@tanstack/react-router"
-import { loadSettingsFromRepo  } from "@/core/content/loadSettingsFromRepo"
+import { loadSettingsFromRepo } from "@/core/content/loadSettingsFromRepo"
 import type { SiteSettings } from "@/core/utils/types"
 import { FormField } from "@/components/admin/FormField"
 import { commitSiteSettings } from "@/core/github/commit"
 import { MediaPicker } from "@/components/MediaPicker"
+import { Toast, type ToastKind } from "@/components/Toast"
 
 export const Route = createFileRoute("/admin/settings")({
   loader: async () => {
@@ -53,7 +54,6 @@ function detectPreset(pattern: string) {
   return preset?.id ?? "custom"
 }
 
-// Branch rule based on "cd"
 function getWriteBranchFromCd(cd: boolean | undefined) {
   return cd ? "main" : "develop"
 }
@@ -115,7 +115,6 @@ function deepEqual(a: any, b: any) {
   return true
 }
 
-
 function normalizeSettings(settings: any): SiteSettings {
   return {
     ...settings,
@@ -139,6 +138,15 @@ function AdminSettingsPage() {
 
   const [base, setBase] = React.useState<SiteSettings>(() => normalizedFromLoader)
   const [draft, setDraft] = React.useState<SiteSettings>(() => normalizedFromLoader)
+
+  // ✅ Toast state
+  const [toast, setToast] = React.useState<{ kind: ToastKind; message: string; duration?: number } | null>(null)
+
+  const showToast = React.useCallback((kind: ToastKind, message: string, duration?: number) => {
+    // remount toast even if same message/kind
+    setToast(null)
+    requestAnimationFrame(() => setToast({ kind, message, duration }))
+  }, [])
 
   React.useEffect(() => {
     setBase(normalizedFromLoader)
@@ -186,20 +194,16 @@ function AdminSettingsPage() {
   const writeBranch = getWriteBranchFromCd((draft as any).cd)
   const isDirty = !deepEqual(base, draft)
 
-  // ✅ Correct TanStack Router guard + beforeunload
   React.useEffect(() => {
     if (!isDirty) return
 
-    // Refresh / close tab
     const onBeforeUnload = (e: BeforeUnloadEvent) => {
       e.preventDefault()
       e.returnValue = ""
     }
     window.addEventListener("beforeunload", onBeforeUnload)
 
-    // In-app navigation (sidebar, links, router.navigate, back/forward inside SPA)
     let unblock: null | (() => void) = null
-
     try {
       unblock = router.history.block({
         blockerFn: (tx: any) => {
@@ -211,7 +215,6 @@ function AdminSettingsPage() {
         },
       })
     } catch (e) {
-      // If block isn't supported by adapter, you still keep beforeunload protection
       // eslint-disable-next-line no-console
       console.warn("[settings-guard] router.history.block failed:", e)
     }
@@ -224,6 +227,18 @@ function AdminSettingsPage() {
 
   return (
     <div className="min-h-[calc(100vh-64px)] bg-gradient-to-b from-neutral-50 to-white">
+      {/* ✅ Toast container (fixed, top-right) */}
+      {toast ? (
+        <div className="fixed right-4 top-4 z-[100] w-[min(420px,calc(100vw-2rem))]">
+          <Toast
+            kind={toast.kind}
+            message={toast.message}
+            duration={toast.duration}
+            onClose={() => setToast(null)}
+          />
+        </div>
+      ) : null}
+
       <div className={cx("mx-auto max-w-4xl px-4 py-8 space-y-6", isDirty ? "pb-28" : "pb-8")}>
         <header className="space-y-1">
           <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">Site settings</h1>
@@ -250,10 +265,7 @@ function AdminSettingsPage() {
               </FormField>
             </div>
 
-            <FormField
-              label="Site URL"
-              hint="Optional. Used for canonical URLs, feeds, SEO. Example: https://user.github.io/repo/"
-            >
+            <FormField label="Site URL" hint="Optional. Used for canonical URLs, feeds, SEO. Example: https://user.github.io/repo/">
               <input
                 className={inputBase()}
                 value={(draft as any).siteUrl ?? ""}
@@ -338,8 +350,7 @@ function AdminSettingsPage() {
           <div className="space-y-4">
             <div className="grid grid-cols-1 gap-3">
               {PERMALINK_PRESETS.filter((p) => p.id !== "custom").map((p) => {
-                const selected =
-                  permalinkMode !== "custom" && normalizePostPermalink(p.pattern) === currentPermalink
+                const selected = permalinkMode !== "custom" && normalizePostPermalink(p.pattern) === currentPermalink
 
                 return (
                   <label
@@ -360,9 +371,7 @@ function AdminSettingsPage() {
                     />
                     <div className="min-w-0 space-y-1">
                       <div className="text-sm font-semibold text-neutral-900">{p.label}</div>
-                      <div className="text-xs font-mono text-neutral-600 break-all">
-                        {normalizePostPermalink(p.pattern)}
-                      </div>
+                      <div className="text-xs font-mono text-neutral-600 break-all">{normalizePostPermalink(p.pattern)}</div>
                       <div className="text-xs text-neutral-500">Example: {p.example}</div>
                     </div>
                   </label>
@@ -397,10 +406,7 @@ function AdminSettingsPage() {
                     Available tags:
                     <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
                       {AVAILABLE_TOKENS.map((t) => (
-                        <div
-                          key={t.token}
-                          className="rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2"
-                        >
+                        <div key={t.token} className="rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2">
                           <div className="text-xs font-mono text-neutral-900">{t.token}</div>
                           <div className="text-[11px] text-neutral-500">{t.desc}</div>
                         </div>
@@ -418,10 +424,8 @@ function AdminSettingsPage() {
         </Card>
       </div>
 
-      {/* Bottom sticky save bar: ONLY shows when there are changes */}
       {isDirty ? (
         <div className="fixed inset-x-0 bottom-0 z-40">
-          {/* stronger scrim so it reads as "floating" */}
           <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/15 via-black/5 to-transparent" />
 
           <div className="relative mx-auto max-w-4xl px-4 pb-4">
@@ -440,7 +444,10 @@ function AdminSettingsPage() {
                       "rounded-xl border border-neutral-300 bg-white px-4 py-2 text-sm shadow-sm",
                       "hover:bg-neutral-50 active:translate-y-[1px] transition"
                     )}
-                    onClick={() => setDraft(base as any)}
+                    onClick={() => {
+                      setDraft(base as any)
+                      showToast("warning", "Changes discarded.", 2500)
+                    }}
                   >
                     Discard
                   </button>
@@ -455,8 +462,9 @@ function AdminSettingsPage() {
                         const branch = getWriteBranchFromCd((draft as any).cd)
                         await commitSiteSettings(draft, branch)
                         setBase(draft)
+                        showToast("success", "Settings saved successfully.", 3000)
                       } catch (e: any) {
-                        alert(e?.message ?? String(e))
+                        showToast("error", e?.message ?? String(e), 6000)
                       }
                     }}
                   >
