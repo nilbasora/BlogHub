@@ -133,6 +133,49 @@ function AdminMediaPage() {
   const [isDragOver, setIsDragOver] = React.useState(false)
   const dragDepthRef = React.useRef(0)
 
+  // Hover preview state (desktop)
+  const [preview, setPreview] = React.useState<{
+    open: boolean
+    src: string
+    name: string
+    x: number
+    y: number
+  }>({ open: false, src: "", name: "", x: 0, y: 0 })
+
+  function clamp(n: number, min: number, max: number) {
+    return Math.max(min, Math.min(max, n))
+  }
+
+  function showPreview(e: React.MouseEvent, src: string, name: string) {
+    const padding = 16
+    const w = 520 // preview card width target
+    const h = 360 // preview card height target
+
+    const x = clamp(e.clientX + 18, padding, window.innerWidth - w - padding)
+    const y = clamp(e.clientY + 18, padding, window.innerHeight - h - padding)
+
+    setPreview({ open: true, src, name, x, y })
+  }
+
+  function movePreview(e: React.MouseEvent) {
+    // use functional update so we don't depend on stale "preview" in closure
+    setPreview((p) => {
+      if (!p.open) return p
+      const padding = 16
+      const w = 520
+      const h = 360
+
+      const x = clamp(e.clientX + 18, padding, window.innerWidth - w - padding)
+      const y = clamp(e.clientY + 18, padding, window.innerHeight - h - padding)
+
+      return { ...p, x, y }
+    })
+  }
+
+  function hidePreview() {
+    setPreview((p) => (p.open ? { ...p, open: false } : p))
+  }
+
   function setBusy(path: string, v: boolean) {
     setBusyPaths((prev) => ({ ...prev, [path]: v }))
   }
@@ -313,9 +356,7 @@ function AdminMediaPage() {
         <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="space-y-1">
             <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">Media</h1>
-            <p className="text-sm text-neutral-600">
-              Upload and manage media.
-            </p>
+            <p className="text-sm text-neutral-600">Upload and manage media.</p>
           </div>
 
           <div className="flex items-center gap-2">
@@ -374,28 +415,16 @@ function AdminMediaPage() {
                     <button type="button" className={pill(typeFilter === "all")} onClick={() => setTypeFilter("all")}>
                       All
                     </button>
-                    <button
-                      type="button"
-                      className={pill(typeFilter === "image")}
-                      onClick={() => setTypeFilter("image")}
-                    >
+                    <button type="button" className={pill(typeFilter === "image")} onClick={() => setTypeFilter("image")}>
                       Images
                     </button>
                     <button type="button" className={pill(typeFilter === "gif")} onClick={() => setTypeFilter("gif")}>
                       GIFs
                     </button>
-                    <button
-                      type="button"
-                      className={pill(typeFilter === "video")}
-                      onClick={() => setTypeFilter("video")}
-                    >
+                    <button type="button" className={pill(typeFilter === "video")} onClick={() => setTypeFilter("video")}>
                       Videos
                     </button>
-                    <button
-                      type="button"
-                      className={pill(typeFilter === "other")}
-                      onClick={() => setTypeFilter("other")}
-                    >
+                    <button type="button" className={pill(typeFilter === "other")} onClick={() => setTypeFilter("other")}>
                       Other
                     </button>
                   </div>
@@ -479,16 +508,25 @@ function AdminMediaPage() {
                 const created = formatDate(m.createdAt)
 
                 const isImageLike =
-                  m.type === "image" ||
-                  m.type === "gif" ||
-                  m.path.match(/\.(png|jpg|jpeg|webp|svg|gif|avif)$/i)
+                  m.type === "image" || m.type === "gif" || m.path.match(/\.(png|jpg|jpeg|webp|svg|gif|avif)$/i)
 
                 return (
                   <div key={m.id || m.path} className="px-5 py-4">
                     {/* Desktop row */}
                     <div className="hidden md:grid grid-cols-12 items-center gap-3">
                       <div className="col-span-7 min-w-0 flex items-center gap-3">
-                        <div className="h-12 w-12 shrink-0 overflow-hidden rounded-xl border border-neutral-200 bg-neutral-50">
+                        <div
+                          className="h-12 w-12 shrink-0 overflow-hidden rounded-xl border border-neutral-200 bg-neutral-50"
+                          onMouseEnter={(e) => {
+                            if (!isImageLike) return
+                            showPreview(e, withBase(m.path), fileNameFromPath(m.path))
+                          }}
+                          onMouseMove={(e) => {
+                            if (!isImageLike) return
+                            movePreview(e)
+                          }}
+                          onMouseLeave={hidePreview}
+                        >
                           {isImageLike ? (
                             <img src={withBase(m.path)} alt="" className="h-full w-full object-cover" loading="lazy" />
                           ) : (
@@ -521,9 +559,7 @@ function AdminMediaPage() {
                           <span className="text-xs text-neutral-600">—</span>
                         ) : (
                           <details className="text-xs">
-                            <summary className="cursor-pointer underline text-neutral-800">
-                              {usedBy.length} post(s)
-                            </summary>
+                            <summary className="cursor-pointer underline text-neutral-800">{usedBy.length} post(s)</summary>
                             <div className="mt-2 space-y-1">
                               {usedBy.map((pid) => (
                                 <div key={pid} className="font-mono text-[11px] text-neutral-600">
@@ -564,7 +600,7 @@ function AdminMediaPage() {
                         <div className="h-12 w-12 shrink-0 overflow-hidden rounded-xl border border-neutral-200 bg-neutral-50">
                           {isImageLike ? (
                             // eslint-disable-next-line @next/next/no-img-element
-                            <img src={m.path} alt="" className="h-full w-full object-cover" loading="lazy" />
+                            <img src={withBase(m.path)} alt="" className="h-full w-full object-cover" loading="lazy" />
                           ) : (
                             <div className="grid h-full w-full place-items-center text-[10px] text-neutral-400">
                               {String(m.type ?? "file").toUpperCase()}
@@ -580,10 +616,7 @@ function AdminMediaPage() {
                             {sizeLabel ? <span>Size: {sizeLabel}</span> : null}
                             {dims ? <span>Dimensions: {dims}</span> : null}
                             <span
-                              className={cx(
-                                "inline-flex rounded-full border px-2 py-0.5 text-[11px]",
-                                typePillClass(m.type)
-                              )}
+                              className={cx("inline-flex rounded-full border px-2 py-0.5 text-[11px]", typePillClass(m.type))}
                             >
                               {m.type}
                             </span>
@@ -594,8 +627,7 @@ function AdminMediaPage() {
 
                       <div className="flex items-center justify-between text-xs text-neutral-600">
                         <div>
-                          Used by:{" "}
-                          <span className="font-medium text-neutral-900">{usedBy.length ? usedBy.length : "—"}</span>
+                          Used by: <span className="font-medium text-neutral-900">{usedBy.length ? usedBy.length : "—"}</span>
                         </div>
                       </div>
 
@@ -654,6 +686,26 @@ function AdminMediaPage() {
           onConfirm={confirmDelete}
         />
       </div>
+
+      {/* Hover preview overlay */}
+      {preview.open ? (
+        <div className="fixed z-[9999] pointer-events-none" style={{ left: preview.x, top: preview.y, width: 520 }}>
+          <div className="rounded-2xl border border-neutral-200 bg-white shadow-2xl overflow-hidden">
+            <div className="px-3 py-2 text-xs text-neutral-700 border-b border-neutral-100">
+              <span className="font-mono">{preview.name}</span>
+            </div>
+
+            <div className="bg-neutral-50">
+              <img
+                src={preview.src}
+                alt=""
+                className="block w-full"
+                style={{ maxHeight: 340, objectFit: "contain" }}
+              />
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }
