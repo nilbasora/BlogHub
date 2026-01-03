@@ -1,4 +1,4 @@
-// @/core/content/loadMediaIndexFromRepo.ts
+// @/core/media/loadMediaIndexFromRepo.ts
 import type { MediaIndex } from "@/core/utils/types"
 import { readRepoJsonFile } from "@/core/github/readFile"
 

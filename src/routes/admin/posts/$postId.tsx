@@ -411,10 +411,7 @@ function AdminPostEditorPage() {
               <MarkdownEditor
                 value={draft.body}
                 onChange={(v) => update("body", v)}
-                onInsertImage={(placeholderPath) => {
-                  const text = `\n\n![alt](${placeholderPath})\n\n`
-                  update("body", draft.body + text)
-                }}
+                currentPostId={postId === "new" ? draft.id : postId}
               />
             </FormField>
           </div>
