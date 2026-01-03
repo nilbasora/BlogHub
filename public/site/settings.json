@@ -6,7 +6,7 @@
   "logo": "/media/logo-bh.png",
   "favicon": "/media/favicon-bh.png",
   "cd": false,
-  "indexCategories": false,
+  "indexCategories": true,
   "permalinks": {
     "post": "/:slug/"
   },
