@@ -8,11 +8,11 @@ import {
   getGithubToken,
   setGithubToken,
   clearGithubToken,
-} from "@/core/github/oauth"
+} from "@/core/api/github/auth"
 import {
   ensureDevelopSyncedWithMain,
   rollbackDevelop,
-} from "@/core/github/branches"
+} from "@/core/api/github/branches"
 
 export const Route = createFileRoute("/login")({
   component: LoginPage,
@@ -201,3 +201,5 @@ function LoginPage() {
     </div>
   )
 }
+
+

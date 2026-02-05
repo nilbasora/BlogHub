@@ -8,7 +8,7 @@ import {
   PostFrontmatter,
   PostsIndex,
   RoutesManifest,
-} from "@/core/utils/types"
+} from "@/core/domain/types"
 import { resolvePostPermalink } from "./permalink"
 import { buildSearchText } from "./utils"
 
@@ -118,3 +118,4 @@ function main() {
 }
 
 main()
+

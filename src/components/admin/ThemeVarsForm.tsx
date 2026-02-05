@@ -1,4 +1,4 @@
-import type { ThemeSchema } from "@/core/utils/types"
+import type { ThemeSchema } from "@/core/domain/types"
 
 type Props = {
   schema: ThemeSchema
@@ -74,3 +74,4 @@ export function ThemeVarsForm({ schema, values, onChange }: Props) {
     </div>
   )
 }
+

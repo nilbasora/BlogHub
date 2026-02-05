@@ -1,4 +1,4 @@
-import type { ThemeModule } from "@/core/utils/types"
+import type { ThemeModule } from "@/core/domain/types"
 import { Home } from "./pages/Home"
 import { Post } from "./pages/Post"
 
@@ -19,3 +19,4 @@ export const minimalTheme: ThemeModule = {
   },
   render: { Home, Post },
 }
+

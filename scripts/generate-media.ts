@@ -12,7 +12,7 @@ import type {
   MediaIndexItem,
   MediaType,
   PostFrontmatter,
-} from "@/core/utils/types"
+} from "@/core/domain/types"
 
 const ROOT = process.cwd()
 const CONTENT_DIR = path.join(ROOT, "public")
@@ -182,3 +182,4 @@ function main() {
 }
 
 main()
+

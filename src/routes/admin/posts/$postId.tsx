@@ -1,21 +1,21 @@
 import * as React from "react"
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router"
 
-import { loadSettingsFromRepo } from "@/core/content/loadSettingsFromRepo"
-import { loadPostsIndexFromRepo } from "@/core/content/loadPostsIndexFromRepo"
-import { loadRoutesManifestFromRepo } from "@/core/content/loadRoutesManifestFromRepo"
-import { loadMarkdownPostFromRepo } from "@/core/content/loadMarkdownPostFromRepo"
+import { loadSettingsFromRepo } from "@/core/content/repo"
+import { loadPostsIndexFromRepo } from "@/core/content/repo"
+import { loadRoutesManifestFromRepo } from "@/core/content/repo"
+import { loadMarkdownPostFromRepo } from "@/core/content/repo"
 
 import { resolvePostPermalink } from "@/../scripts/permalink"
 import { FormField } from "@/components/admin/FormField"
-import { writePreviewPostDraft } from "@/core/preview/previewPost"
-import { writePreviewSettings } from "@/core/preview/previewSettings"
+import { writePreviewPostDraft } from "@/core/storage/previewPost"
+import { writePreviewSettings } from "@/core/storage/previewSettings"
 import { MarkdownEditor } from "@/components/admin/MarkdownEditor"
-import { parseFrontmatterBlock } from "@/core/posts/frontmatter"
+import { parseFrontmatterBlock } from "@/core/domain/posts/frontmatter"
 
-import { commitPostMd } from "@/core/github/commit"
+import { commitPostMd } from "@/core/api/github/commit"
 
-import type { PostFrontmatter, SiteSettings } from "@/core/utils/types"
+import type { PostFrontmatter, SiteSettings } from "@/core/domain/types"
 
 const BRANCH = "develop"
 
@@ -518,3 +518,9 @@ function AdminPostEditorPage() {
     </div>
   )
 }
+
+
+
+
+
+

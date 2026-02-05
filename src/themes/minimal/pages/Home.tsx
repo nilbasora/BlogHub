@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router"
-import type { ThemeHomeProps } from "@/core/utils/types"
+import type { ThemeHomeProps } from "@/core/domain/types"
 
 export function Home({ settings, themeVars, posts }: ThemeHomeProps) {
   const layout = themeVars.layout === "wide" ? "max-w-5xl" : "max-w-3xl"
@@ -33,3 +33,4 @@ export function Home({ settings, themeVars, posts }: ThemeHomeProps) {
     </div>
   )
 }
+

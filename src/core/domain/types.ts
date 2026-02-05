@@ -1,0 +1,183 @@
+import type { ReactElement } from "react"
+
+// ----------------------------
+// Shared helpers
+// ----------------------------
+export type ISODateString = string
+
+export type GeneratedManifest<V extends number = 1> = {
+  version: V
+  generatedAt: ISODateString
+}
+
+export type UnknownRecord = Record<string, unknown>
+
+// ----------------------------
+// Settings
+// ----------------------------
+export type SiteSettings = {
+  siteName?: string
+  tagline?: string
+  siteUrl?: string
+  language?: string
+  logo?: string
+  favicon?: string
+  cd?: boolean
+  indexCategories?: boolean
+  permalinks: {
+    post: string
+  }
+  theme: {
+    active: string
+    vars: UnknownRecord
+  }
+}
+
+// ----------------------------
+// Posts
+// ----------------------------
+export type PostStatus = "draft" | "published"
+
+export type PostFrontmatter = {
+  id: string
+  title: string
+  slug: string
+  date: ISODateString
+  status: PostStatus
+
+  excerpt?: string
+  tags?: string[]
+  categories?: string[]
+
+  featured_image?: string | null
+  seo_title?: string | null
+  seo_description?: string | null
+}
+
+export type PostsIndexItem = PostFrontmatter & {
+  url: string
+
+  // normalized fields (always present in index)
+  tags: string[]
+  categories: string[]
+
+  // SEO fields may be normalized to null
+  featured_image?: string | null
+  seo_title?: string | null
+  seo_description?: string | null
+
+  search: string
+}
+
+export type PostsIndex = GeneratedManifest<1> & {
+  posts: PostsIndexItem[]
+}
+
+// ----------------------------
+// Routes
+// ----------------------------
+export type RoutesManifest = GeneratedManifest<1> & {
+  routes: Record<string, string> // url -> markdown path
+}
+
+// ----------------------------
+// Markdown parsing
+// ----------------------------
+export type ParsedMarkdownPost = {
+  frontmatter: UnknownRecord
+  content: string
+}
+
+// ----------------------------
+// Media
+// ----------------------------
+export type MediaType = "image" | "video" | "gif" | "other"
+
+export type MediaIndexItem = {
+  id: string
+  path: string // e.g. "/media/foo.png"
+  type: MediaType
+  usedBy: string[] // post IDs
+  size?: number // in bytes
+  width?: number
+  height?: number
+  createdAt?: ISODateString
+}
+
+export type MediaIndex = GeneratedManifest<number> & {
+  items: MediaIndexItem[]
+}
+
+// ----------------------------
+// Theme module API
+// ----------------------------
+export type ThemeField =
+  | { key: string; label: string; type: "string"; default: string }
+  | { key: string; label: string; type: "boolean"; default: boolean }
+  | { key: string; label: string; type: "select"; options: string[]; default: string }
+  | {
+      key: string
+      label: string
+      type: "number"
+      default: number
+      min?: number
+      max?: number
+      step?: number
+    }
+
+export type ThemeSchema = {
+  title: string
+  description?: string
+  fields: ThemeField[]
+}
+
+export type ThemeVars = UnknownRecord
+
+export type ThemeHomeProps = {
+  settings: SiteSettings
+  themeVars: ThemeVars
+  posts: PostsIndexItem[]
+}
+
+export type ThemePostProps = {
+  settings: SiteSettings
+  themeVars: ThemeVars
+  post: PostsIndexItem
+  content: string
+}
+
+export type ThemeModule = {
+  id: string
+  schema: ThemeSchema
+  defaults: ThemeVars
+  render: {
+    Home: (props: ThemeHomeProps) => ReactElement
+    Post: (props: ThemePostProps) => ReactElement
+  }
+}
+
+// ----------------------------
+// GitHub
+// ----------------------------
+export type GitHubMergeResponse = {
+  sha: string
+  merged: boolean
+  message?: string
+}
+
+export type GitHubCompareResponse = {
+  status: "identical" | "ahead" | "behind" | "diverged"
+  ahead_by: number
+  behind_by: number
+  total_commits: number
+  html_url?: string
+}
+
+export type BranchSyncInfo = {
+  status: GitHubCompareResponse["status"]
+  aheadBy: number
+  behindBy: number
+  isSynced: boolean
+  developAheadOfMain: boolean
+  compareUrl?: string
+}

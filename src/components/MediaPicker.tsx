@@ -1,6 +1,6 @@
 import * as React from "react"
-import type { MediaIndex, MediaIndexItem } from "@/core/utils/types"
-import { loadMediaIndexFromRepo } from "@/core/media/loadMediaIndexFromRepo"
+import type { MediaIndex, MediaIndexItem } from "@/core/domain/types"
+import { loadMediaIndexFromRepo } from "@/core/content/repo"
 import { withBase } from "@/core/config/paths"
 
 function cx(...parts: Array<string | false | null | undefined>) {
@@ -267,3 +267,5 @@ export function MediaPicker({
     </div>
   )
 }
+
+

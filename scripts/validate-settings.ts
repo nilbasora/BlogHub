@@ -1,7 +1,7 @@
 import fs from "node:fs"
 import path from "node:path"
 import { pathToFileURL } from "node:url"
-import { SiteSettings } from "@/core/utils/types.js"
+import { SiteSettings } from "@/core/domain/types.js"
 
 const ROOT = process.cwd()
 const SETTINGS_PATH = path.join(ROOT, "public", "site", "settings.json")
@@ -175,3 +175,4 @@ main().catch((e) => {
   console.error(e?.message ?? e)
   process.exit(1)
 })
+

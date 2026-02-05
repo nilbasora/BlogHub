@@ -1,12 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router"
 import * as React from "react"
-import { loadSettings } from "@/core/content/loadSettings"
-import { resolveTheme } from "@/core/themes/resolveTheme"
-import { normalizeThemeVars } from "@/core/themes/validateVars"
+import { loadSettings } from "@/core/content/local"
+import { resolveTheme } from "@/core/domain/themes/resolveTheme"
+import { normalizeThemeVars } from "@/core/domain/themes/validateVars"
 import { ThemeVarsForm } from "@/components/admin/ThemeVarsForm"
-import { getThemeById, listThemes } from "@/core/themes/registry"
-import { writePreviewSettings, clearPreviewSettings } from "@/core/preview/previewSettings"
-import { commitThemeSettings } from "@/core/github/commit"
+import { getThemeById, listThemes } from "@/core/domain/themes/registry"
+import { writePreviewSettings, clearPreviewSettings } from "@/core/storage/previewSettings"
+import { commitThemeSettings } from "@/core/api/github/commit"
 
 export const Route = createFileRoute("/admin/theme")({
   loader: async () => {
@@ -532,3 +532,7 @@ function AdminThemePage() {
     </div>
   )
 }
+
+
+
+

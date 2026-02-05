@@ -1,4 +1,4 @@
-import type { PostsIndexItem, SiteSettings } from "@/core/utils/types"
+import type { PostsIndexItem, SiteSettings } from "@/core/domain/types"
 
 export function resolvePostPermalink(
   post: PostsIndexItem,
@@ -30,3 +30,4 @@ export function resolvePostPermalink(
 
   return url
 }
+

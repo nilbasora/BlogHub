@@ -1,7 +1,7 @@
 import * as React from "react"
-import type { MediaIndexItem, MediaType } from "@/core/utils/types"
-import { loadMediaIndexFromRepo } from "@/core/media/loadMediaIndexFromRepo"
-import { commitMediaFile, deleteMediaFile } from "@/core/github/commit"
+import type { MediaIndexItem, MediaType } from "@/core/domain/types"
+import { loadMediaIndexFromRepo } from "@/core/content/repo"
+import { commitMediaFile, deleteMediaFile } from "@/core/api/github/commit"
 import { withBase } from "@/core/config/paths"
 import { Trash2 } from "lucide-react"
 
@@ -618,3 +618,6 @@ export function MediaLibraryModal({
     </div>
   )
 }
+
+
+

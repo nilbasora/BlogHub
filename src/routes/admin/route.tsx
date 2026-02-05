@@ -2,10 +2,10 @@ import * as React from "react"
 import { Outlet, createFileRoute, redirect, useNavigate } from "@tanstack/react-router"
 import { AdminTopbar } from "@/components/admin/AdminTopbar"
 import { AdminSidebar } from "@/components/admin/AdminSidebar"
-import { clearGithubToken, getGithubToken, validateTokenForRepo } from "@/core/github/oauth"
-import { checkBranchesSync, deployDevelopToMain } from "@/core/github/deploy"
-import { clearViewerCache } from "@/core/github/useViewer"
-import { registerLogoutHandler } from "@/core/github/logout"
+import { clearGithubToken, getGithubToken, validateTokenForRepo } from "@/core/api/github/auth"
+import { checkBranchesSync, deployDevelopToMain } from "@/core/api/github/deploy"
+import { clearViewerCache } from "@/core/api/github/useViewer"
+import { registerLogoutHandler } from "@/core/api/github/logout"
 
 let validatedToken: string | null = null
 
@@ -122,3 +122,5 @@ function AdminLayout() {
     </div>
   )
 }
+
+

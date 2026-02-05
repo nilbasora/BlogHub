@@ -2,7 +2,7 @@ import fs from "node:fs"
 import path from "node:path"
 import { pathToFileURL } from "node:url"
 
-import type { ThemeField, ThemeModule } from "@/core/utils/types"
+import type { ThemeField, ThemeModule } from "@/core/domain/types"
 
 const ROOT = process.cwd()
 const THEMES_DIR = path.join(ROOT, "src", "themes")
@@ -191,3 +191,4 @@ main().catch((e) => {
   console.error(e)
   process.exit(1)
 })
+
