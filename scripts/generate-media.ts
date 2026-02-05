@@ -19,9 +19,37 @@ const CONTENT_DIR = path.join(ROOT, "public")
 const POSTS_DIR = path.join(CONTENT_DIR, "posts")
 const MEDIA_DIR = path.join(CONTENT_DIR, "media")
 const GENERATED_DIR = path.join(CONTENT_DIR, "generated")
+const CACHE_PATH = path.join(GENERATED_DIR, ".media-cache.json")
+
+type MediaCache = {
+  version: 1
+  files: Record<
+    string,
+    { hash: string; type: MediaType; size?: number; width?: number; height?: number }
+  >
+}
 
 function ensureDir(dir: string) {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
+}
+
+function readJsonIfExists<T>(filePath: string): T | null {
+  if (!fs.existsSync(filePath)) return null
+  return JSON.parse(fs.readFileSync(filePath, "utf8")) as T
+}
+
+function writeIfChanged(filePath: string, content: string): boolean {
+  if (fs.existsSync(filePath)) {
+    const current = fs.readFileSync(filePath, "utf8")
+    if (current === content) return false
+  }
+  fs.writeFileSync(filePath, content, "utf8")
+  return true
+}
+
+function hashFile(absPath: string): string {
+  const buf = fs.readFileSync(absPath)
+  return crypto.createHash("sha1").update(buf).digest("hex")
 }
 
 function toPosix(p: string) {
@@ -85,7 +113,7 @@ function mainSyncPart(): {
     nodir: true,
     dot: false,
   })
-  const mediaFilesRelPosix = mediaFilesRel.map(toPosix)
+  const mediaFilesRelPosix = mediaFilesRel.map(toPosix).sort()
 
   // 2) scan posts to map /media/... -> Set<postId>
   const postFiles = globSync("**/*.md", { cwd: POSTS_DIR })
@@ -123,15 +151,19 @@ function mainSyncPart(): {
 }
 
 function main() {
-  console.log("📦 Generating media index…")
+  console.log("ðŸ“¦ Generating media indexâ€¦")
 
   ensureDir(GENERATED_DIR)
+
+  const cache =
+    readJsonIfExists<MediaCache>(CACHE_PATH) ?? { version: 1, files: {} }
+  const nextCache: MediaCache = { version: 1, files: {} }
 
   const { mediaFilesRelPosix, usedByByMediaUrlPath } = mainSyncPart()
 
   const index: MediaIndex = {
     version: 1,
-    generatedAt: new Date().toISOString(),
+    generatedAt: "",
     items: [],
   }
 
@@ -144,6 +176,9 @@ function main() {
     const id = makeStableId(urlPath)
     const usedBy = Array.from(usedByByMediaUrlPath.get(urlPath) ?? []).sort()
 
+    const hash = hashFile(absPath)
+    const cached = cache.files[relPosix]
+
     // Always include these fields
     const item: MediaIndexItem = {
       id,
@@ -155,7 +190,8 @@ function main() {
 
     // For videos: do NOT add size/width/height
     if (type === "image" || type === "gif") {
-      const dims = getImageDimensions(absPath)
+      const reuseDims = cached && cached.hash === hash && cached.type === type
+      const dims = reuseDims ? { width: cached.width, height: cached.height } : getImageDimensions(absPath)
       item.size = typeof st.size === "number" ? st.size : undefined
       item.width = dims.width
       item.height = dims.height
@@ -166,20 +202,36 @@ function main() {
       item.size = typeof st.size === "number" ? st.size : undefined
     }
 
+    nextCache.files[relPosix] = {
+      hash,
+      type,
+      size: item.size,
+      width: item.width,
+      height: item.height,
+    }
+
     index.items.push(item)
   }
 
   // Stable output order
   index.items.sort((a, b) => a.path.localeCompare(b.path))
 
-  fs.writeFileSync(
+  const prevIndex = readJsonIfExists<MediaIndex>(path.join(GENERATED_DIR, "media-index.json"))
+  const nextFingerprint = JSON.stringify({ version: index.version, items: index.items })
+  const prevFingerprint = prevIndex ? JSON.stringify({ version: prevIndex.version, items: prevIndex.items }) : null
+  index.generatedAt =
+    prevFingerprint && prevFingerprint === nextFingerprint
+      ? prevIndex?.generatedAt ?? new Date().toISOString()
+      : new Date().toISOString()
+
+  writeIfChanged(
     path.join(GENERATED_DIR, "media-index.json"),
-    JSON.stringify(index, null, 2),
-    "utf8"
+    JSON.stringify(index, null, 2)
   )
 
-  console.log(`✅ Media index generated: ${index.items.length} items`)
+  writeIfChanged(CACHE_PATH, JSON.stringify(nextCache, null, 2))
+
+  console.log(`âœ… Media index generated: ${index.items.length} items`)
 }
 
 main()
-

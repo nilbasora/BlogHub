@@ -12,6 +12,10 @@ dist
 dist-ssr
 *.local
 
+# Generated caches
+public/generated/.content-cache.json
+public/generated/.media-cache.json
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
