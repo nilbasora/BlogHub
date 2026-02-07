@@ -5,7 +5,7 @@
   "language": "en",
   "logo": "/media/logo-bh.png",
   "favicon": "/media/favicon-bh.png",
-  "cd": false,
+  "cd": true,
   "indexCategories": false,
   "permalinks": {
     "post": "/:slug/"
