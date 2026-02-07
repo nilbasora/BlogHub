@@ -1,7 +1,7 @@
 import * as React from "react"
 import { createFileRoute, Link } from "@tanstack/react-router"
-import { loadPostsIndexFromRepo } from "@/core/content/loadPostsIndexFromRepo"
-import { deletePostMd } from "@/core/github/commit"
+import { loadPostsIndexFromRepo } from "@/core/content/repo"
+import { deletePostMd } from "@/core/api/github/commit"
 
 export const Route = createFileRoute("/admin/posts/")({
   loader: async () => {
@@ -378,3 +378,6 @@ function AdminPostsPage() {
     </div>
   )
 }
+
+
+

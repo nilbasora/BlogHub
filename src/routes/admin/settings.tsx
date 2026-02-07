@@ -1,9 +1,9 @@
 import * as React from "react"
 import { createFileRoute, useRouter } from "@tanstack/react-router"
-import { loadSettingsFromRepo } from "@/core/content/loadSettingsFromRepo"
-import type { SiteSettings } from "@/core/utils/types"
+import { loadSettingsFromRepo } from "@/core/content/repo"
+import type { SiteSettings } from "@/core/domain/types"
 import { FormField } from "@/components/admin/FormField"
-import { commitSiteSettings } from "@/core/github/commit"
+import { commitSiteSettings } from "@/core/api/github/commit"
 import { MediaPicker } from "@/components/MediaPicker"
 import { Toast, type ToastKind } from "@/components/Toast"
 
@@ -479,3 +479,7 @@ function AdminSettingsPage() {
     </div>
   )
 }
+
+
+
+

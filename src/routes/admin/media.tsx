@@ -3,10 +3,10 @@ import { createFileRoute } from "@tanstack/react-router"
 import { FormField } from "@/components/admin/FormField"
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog"
 
-import type { MediaIndex, MediaIndexItem, MediaType } from "@/core/utils/types"
+import type { MediaIndex, MediaIndexItem, MediaType } from "@/core/domain/types"
 
-import { loadMediaIndexFromRepo } from "@/core/media/loadMediaIndexFromRepo"
-import { commitMediaFile, deleteMediaFile } from "@/core/github/commit"
+import { loadMediaIndexFromRepo } from "@/core/content/repo"
+import { commitMediaFile, deleteMediaFile } from "@/core/api/github/commit"
 import { withBase } from "@/core/config/paths"
 
 import { MediaEditorDialog } from "@/components/admin/MediaEditorDialog"
@@ -772,3 +772,6 @@ function AdminMediaPage() {
     </div>
   )
 }
+
+
+

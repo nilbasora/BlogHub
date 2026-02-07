@@ -1,7 +1,7 @@
 import { Link, useRouterState, useNavigate } from "@tanstack/react-router"
-import { clearGithubToken } from "@/core/github/oauth"
-import { getRepoRef } from "@/core/github/repo"
-import { useViewer, clearViewerCache } from "@/core/github/useViewer"
+import { clearGithubToken } from "@/core/api/github/auth"
+import { getRepoRef } from "@/core/api/github/repo"
+import { useViewer, clearViewerCache } from "@/core/api/github/useViewer"
 
 export type AdminNavItem = {
   to: string
@@ -119,3 +119,5 @@ export function AdminSidebar({ variant = "desktop", onNavigate }: Props) {
     </aside>
   )
 }
+
+

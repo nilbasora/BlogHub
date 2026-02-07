@@ -1,15 +1,15 @@
 import { createFileRoute, notFound } from "@tanstack/react-router"
-import { loadRoutesManifest } from "@/core/content/loadRoutesManifest"
-import { loadPostsIndex } from "@/core/content/loadPostsIndex"
-import { loadMarkdownPost } from "@/core/content/loadMarkdownPost"
-import { loadSettings } from "@/core/content/loadSettings"
-import { resolveTheme } from "@/core/themes/resolveTheme"
-import { usePreviewSettings } from "@/core/preview/PreviewSettingsProvider"
-import { isPreviewMode } from "@/core/preview/previewSettings"
-import { readPreviewPostDraft } from "@/core/preview/previewPost"
-import type { PostsIndexItem, PostStatus } from "@/core/utils/types"
-import { useSiteSettingsForSeo } from "@/core/seo/SeoProvider"
-import { useSeo } from "@/core/seo/useSeo"
+import { loadRoutesManifest } from "@/core/content/local"
+import { loadPostsIndex } from "@/core/content/local"
+import { loadMarkdownPost } from "@/core/content/local"
+import { loadSettings } from "@/core/content/local"
+import { resolveTheme } from "@/core/domain/themes/resolveTheme"
+import { usePreviewSettings } from "@/core/storage/PreviewSettingsProvider"
+import { isPreviewMode } from "@/core/storage/previewSettings"
+import { readPreviewPostDraft } from "@/core/storage/previewPost"
+import type { PostsIndexItem, PostStatus } from "@/core/domain/types"
+import { useSiteSettingsForSeo } from "@/core/domain/seo/SeoProvider"
+import { useSeo } from "@/core/domain/seo/useSeo"
 
 export const Route = createFileRoute("/$")({
   loader: async ({ params }) => {
@@ -130,3 +130,8 @@ function PostRoute() {
 
   return theme.render.Post({ settings, themeVars: vars, post, content })
 }
+
+
+
+
+

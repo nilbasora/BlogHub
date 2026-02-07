@@ -1,4 +1,4 @@
-import type { ThemePostProps } from "@/core/utils/types"
+import type { ThemePostProps } from "@/core/domain/types"
 import { MarkdownRenderer } from "@/components/MarkdownRenderer"
 import { Link } from "@tanstack/react-router"
 
@@ -20,3 +20,4 @@ export function Post({ settings, themeVars, post, content }: ThemePostProps) {
     </div>
   )
 }
+

@@ -1,10 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router"
-import { loadPostsIndex } from "@/core/content/loadPostsIndex"
-import { loadSettings } from "@/core/content/loadSettings"
-import { resolveTheme } from "@/core/themes/resolveTheme"
-import { usePreviewSettings } from "@/core/preview/PreviewSettingsProvider"
-import { useSeo } from "@/core/seo/useSeo"
-import { useSiteSettingsForSeo } from "@/core/seo/SeoProvider"
+import { loadPostsIndex } from "@/core/content/local"
+import { loadSettings } from "@/core/content/local"
+import { resolveTheme } from "@/core/domain/themes/resolveTheme"
+import { usePreviewSettings } from "@/core/storage/PreviewSettingsProvider"
+import { useSeo } from "@/core/domain/seo/useSeo"
+import { useSiteSettingsForSeo } from "@/core/domain/seo/SeoProvider"
 
 export const Route = createFileRoute("/")({
   loader: async () => {
@@ -33,3 +33,7 @@ function HomeRoute() {
 
   return theme.render.Home({ settings, themeVars: vars, posts: index.posts })
 }
+
+
+
+

@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router"
-import type { ThemeHomeProps } from "@/core/utils/types"
+import type { ThemeHomeProps } from "@/core/domain/types"
 
 export function Home({ settings, themeVars, posts }: ThemeHomeProps) {
   const brandName = String(themeVars.brandName ?? settings.siteName)
@@ -34,3 +34,4 @@ export function Home({ settings, themeVars, posts }: ThemeHomeProps) {
     </div>
   )
 }
+

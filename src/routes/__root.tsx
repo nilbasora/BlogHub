@@ -1,8 +1,8 @@
 import { Outlet, createRootRoute } from "@tanstack/react-router"
-import { PreviewSettingsProvider, usePreviewSettings } from "@/core/preview/PreviewSettingsProvider"
-import { loadSettings } from "@/core/content/loadSettings"
-import { useSiteFavicon } from "@/core/seo/useSiteFavicon"
-import { SeoProvider } from "@/core/seo/SeoProvider"
+import { PreviewSettingsProvider, usePreviewSettings } from "@/core/storage/PreviewSettingsProvider"
+import { loadSettings } from "@/core/content/local"
+import { useSiteFavicon } from "@/core/domain/seo/useSiteFavicon"
+import { SeoProvider } from "@/core/domain/seo/SeoProvider"
 
 export const Route = createRootRoute({
   loader: async () => {
@@ -49,3 +49,6 @@ function RootInner() {
     </SeoProvider>
   )
 }
+
+
+
